@@ -30,11 +30,20 @@ export class KdsSocketService {
       throw new Error('LINEAS_VACIAS');
     }
 
-    const orden = await this.ordenRepo.findOne({ where: { id: data.orden_id } });
+    const orden = await this.ordenRepo
+      .createQueryBuilder('ord')
+      .leftJoinAndSelect('ord.mesa', 'mesa')
+      .where('ord.id = :id', { id: data.orden_id })
+      .getOne();
     if (!orden) throw new Error('ORDEN_NO_ENCONTRADA');
     if (orden.sucursal_id !== sucursal_id) throw new Error('ORDEN_NO_PERTENECE_SUCURSAL');
 
-    const lineas = await this.ordenLineaRepo.findBy({ id: In(data.linea_ids) });
+    const lineas = await this.ordenLineaRepo
+      .createQueryBuilder('ol')
+      .leftJoinAndSelect('ol.articulo', 'art')
+      .leftJoinAndSelect('art.familia', 'fam')
+      .where('ol.id IN (:...ids)', { ids: data.linea_ids })
+      .getMany();
     const validas = lineas.filter((l) => l.orden_id === data.orden_id);
     const yaEnviadas = validas.filter((l) => l.enviado_a_cocina);
     const pendientes = validas.filter((l) => !l.enviado_a_cocina);
@@ -106,7 +115,11 @@ export class KdsSocketService {
       result[tipo] = { kds_ids: [], lineas_payload: [] };
 
       for (const linea of lineasGrupo) {
-        const mods = await this.modificadoresRepo.findBy({ orden_linea_id: linea.id as number });
+        const mods = await this.modificadoresRepo
+          .createQueryBuilder('m')
+          .leftJoinAndSelect('m.modificador', 'mod')
+          .where('m.orden_linea_id = :id', { id: linea.id })
+          .getMany();
 
         const kdsRec = this.kdsOrdeneRepo.create({
           orden_linea_id: linea.id as number,
@@ -124,7 +137,7 @@ export class KdsSocketService {
           articulo: linea.articulo?.nombre ?? '',
           cantidad: linea.cantidad,
           notas_linea: linea.notas_linea ?? '',
-          modificadores: mods.map((m) => m.modificador?.nombre ?? ''),
+          modificadores: mods.map((m) => m.modificador?.nombre ?? '').filter(Boolean),
           tiempo_preparacion: linea.articulo?.tiempo_preparacion ?? null,
         });
       }
@@ -133,14 +146,13 @@ export class KdsSocketService {
     const buildPayload = (tipo: string) => {
       if (!result[tipo]) return null;
       return {
-        kds_orden_id: result[tipo].kds_ids[0],
-        orden_id: orden.id,
-        mesa: orden.mesa?.nombre ?? `Orden ${orden.numero_orden}`,
-        numero_orden: orden.numero_orden,
-        tipo_servicio: orden.tipo_servicio,
+        kds_orden_id:    result[tipo].kds_ids[0],
+        orden_id:        orden.id,
+        numero_orden:    orden.numero_orden,
+        mesa:            orden.mesa?.nombre ?? `Orden ${orden.numero_orden}`,
+        tipo_servicio:   orden.tipo_servicio,
         tiempo_recibido: now.toISOString(),
-        prioridad: 'normal',
-        lineas: result[tipo].lineas_payload,
+        lineas:          result[tipo].lineas_payload,
       };
     };
 

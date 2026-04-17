@@ -11,12 +11,15 @@ import { UpdateKdsOrdeneDto } from './dto/update-kds_ordene.dto';
 import { KdsOrdeneFiltersDto } from './dto/pagination.dto';
 import { KdsOrdene } from './entities/kds_ordene.entity';
 import { PaginationResponse } from './interfaces/pagination-response.interface';
+import { OrdenLineaModificadore } from '../orden_linea_modificadores/entities/orden_linea_modificadore.entity';
 
 @Injectable()
 export class KdsOrdenesService {
   constructor(
     @InjectRepository(KdsOrdene)
     private kdsOrdenesRepository: Repository<KdsOrdene>,
+    @InjectRepository(OrdenLineaModificadore)
+    private modificadoresRepo: Repository<OrdenLineaModificadore>,
   ) {}
 
   private getErrorMessage(error: unknown): string {
@@ -112,6 +115,77 @@ export class KdsOrdenesService {
       throw new HttpException(
         `Error al actualizar el registro: ${this.getErrorMessage(error)}`,
         HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  async getPantalla(destino_id: number) {
+    try {
+      const rows = await this.kdsOrdenesRepository
+        .createQueryBuilder('k')
+        .leftJoinAndSelect('k.orden_linea', 'ol')
+        .leftJoinAndSelect('ol.articulo', 'art')
+        .leftJoinAndSelect('art.familia', 'fam')
+        .leftJoinAndSelect('ol.orden', 'ord')
+        .leftJoinAndSelect('ord.mesa', 'mesa')
+        .where('k.destino_id = :destino_id', { destino_id })
+        .andWhere('k.estado IN (:...estados)', { estados: ['pendiente', 'en_preparacion'] })
+        .orderBy('k.tiempo_recibido', 'ASC')
+        .getMany();
+
+      // Cargar modificadores para todas las líneas de una vez
+      const lineaIds = rows.map(k => k.orden_linea?.id).filter(Boolean) as number[];
+      const mods = lineaIds.length
+        ? await this.modificadoresRepo
+            .createQueryBuilder('m')
+            .leftJoinAndSelect('m.modificador', 'mod')
+            .where('m.orden_linea_id IN (:...ids)', { ids: lineaIds })
+            .getMany()
+        : [];
+      const modsByLinea = new Map<number, string[]>();
+      for (const m of mods) {
+        const nombre = m.modificador?.nombre ?? '';
+        if (!nombre) continue;
+        const list = modsByLinea.get(m.orden_linea_id) ?? [];
+        list.push(nombre);
+        modsByLinea.set(m.orden_linea_id, list);
+      }
+
+      // Agrupar por batch: (orden_id + tiempo_recibido) — cada envío a cocina es una tarjeta separada
+      const map = new Map<string, any>();
+      for (const k of rows) {
+        const ord = k.orden_linea?.orden;
+        const ol  = k.orden_linea;
+        const ordenId  = ord?.id ?? 0;
+        const batchKey = `${ordenId}_${k.tiempo_recibido instanceof Date ? k.tiempo_recibido.toISOString() : k.tiempo_recibido}`;
+        if (!map.has(batchKey)) {
+          map.set(batchKey, {
+            kds_orden_id:    k.id,
+            orden_id:        ordenId,
+            numero_orden:    ord?.numero_orden ?? 0,
+            mesa:            ord?.mesa?.nombre ?? `Orden ${ord?.numero_orden}`,
+            tipo_servicio:   ord?.tipo_servicio ?? 'mesa',
+            tiempo_recibido: k.tiempo_recibido,
+            estado:          k.estado,
+            lineas: [],
+          });
+        }
+        map.get(batchKey).lineas.push({
+          kds_orden_id:       k.id,
+          orden_linea_id:     ol?.id,
+          articulo:           ol?.articulo?.nombre ?? '',
+          cantidad:           ol?.cantidad ?? 1,
+          modificadores:      modsByLinea.get(ol?.id as number) ?? [],
+          notas_linea:        ol?.notas_linea ?? '',
+          tiempo_preparacion: ol?.articulo?.tiempo_preparacion ?? null,
+          estado:             k.estado,
+        });
+      }
+      return Array.from(map.values());
+    } catch (error: unknown) {
+      throw new HttpException(
+        `Error al obtener pantalla KDS: ${this.getErrorMessage(error)}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

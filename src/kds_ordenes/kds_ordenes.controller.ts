@@ -28,6 +28,13 @@ export class KdsOrdenesController {
     return this.kds_ordenesService.create(createKdsOrdeneDto);
   }
 
+  @Get('pantalla')
+  @ApiOperation({ summary: 'Comandas activas para pantalla KDS' })
+  @ApiQuery({ name: 'destino_id', required: true, type: Number })
+  getPantalla(@Query('destino_id', ParseIntPipe) destino_id: number) {
+    return this.kds_ordenesService.getPantalla(destino_id);
+  }
+
   @Get()
   @ApiOperation({
     summary: 'Obtener kds_ordenes',

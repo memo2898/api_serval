@@ -546,7 +546,7 @@ CREATE TABLE destinos_impresion (
     id              SERIAL PRIMARY KEY,
     sucursal_id     INT REFERENCES sucursales(id) ON DELETE CASCADE,
     nombre          VARCHAR(100) NOT NULL,
-    tipo            VARCHAR(20) NOT NULL CHECK (tipo IN ('impresora', 'pantalla_kds')),
+    tipo            VARCHAR(20) NOT NULL CHECK (tipo IN ('impresora', 'pantalla_kds', 'cocina', 'barra')),
     ip_impresora    VARCHAR(50),
     estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en     TIMESTAMP DEFAULT NOW(),
