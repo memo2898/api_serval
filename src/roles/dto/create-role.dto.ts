@@ -11,4 +11,9 @@ export class CreateRoleDto {
   @IsOptional()
   @IsString()
   descripcion?: string;
+
+  @ApiProperty({ example: "fa-user-shield" })
+  @IsOptional()
+  @IsString()
+  icono?: string;
 }

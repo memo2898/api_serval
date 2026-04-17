@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsNumber } from 'class-validator';
 
 export class CreatePaiseDto {
   @ApiProperty({ example: "put some text here" })
@@ -12,8 +12,8 @@ export class CreatePaiseDto {
   @IsString()
   codigo_iso: string;
 
-  @ApiProperty({ example: "put some text here" })
+  @ApiProperty({ example: 12345 })
   @IsOptional()
-  @IsString()
-  moneda_defecto?: string;
+  @IsNumber()
+  moneda_id?: number;
 }

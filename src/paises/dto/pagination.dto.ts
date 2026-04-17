@@ -64,11 +64,12 @@ export class PaiseFiltersDto extends PaginationDto {
   codigo_iso?: string;
 
   @ApiPropertyOptional({ 
-    example: 'valor ejemplo', 
-    description: 'Filtrar por moneda_defecto (búsqueda parcial)' 
+    example: 1, 
+    description: 'Filtrar por moneda_id' 
   })
   @IsOptional()
-  @IsString()
-  moneda_defecto?: string;
+  @Type(() => Number)
+  @IsNumber()
+  moneda_id?: number;
 
 }

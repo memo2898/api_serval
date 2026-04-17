@@ -12,5 +12,6 @@ export class Role {
   @Column({ type: "varchar" })
   descripcion: string | null;
 
-
+  @Column({ type: "varchar" })
+  icono: string | null;
 }

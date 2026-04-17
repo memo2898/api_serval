@@ -103,13 +103,13 @@ INSERT INTO impuestos (pais_id, nombre, porcentaje, tipo, tipo_aplicacion) VALUE
 -- ROLES
 -- =============================================================
 
-INSERT INTO roles (nombre, descripcion) VALUES
-('Administrador', 'Acceso total al sistema: configuración, reportes y operaciones'),
-('Encargado',     'Gestión operativa: puede aplicar descuentos, ver reportes y gestionar turnos'),
-('Camarero',      'Toma de órdenes, cobro y gestión de mesas en su turno'),
-('Cocinero',      'Acceso a pantalla KDS: ver y actualizar estado de comandas'),
-('Cajero',        'Gestión de pagos, cierres de caja y facturación'),
-('Bartender',     'Preparación de bebidas y gestión de comandas de bar');
+INSERT INTO roles (nombre, descripcion, icono) VALUES
+('Administrador', 'Acceso total al sistema: configuración, reportes y operaciones', 'fa-user-shield'),
+('Encargado',     'Gestión operativa: puede aplicar descuentos, ver reportes y gestionar turnos', 'fa-user-tie'),
+('Camarero',      'Toma de órdenes, cobro y gestión de mesas en su turno', 'fa-utensils'),
+('Cocinero',      'Acceso a pantalla KDS: ver y actualizar estado de comandas', 'fa-fire'),
+('Cajero',        'Gestión de pagos, cierres de caja y facturación', 'fa-cash-register'),
+('Bartender',     'Preparación de bebidas y gestión de comandas de bar', 'fa-martini-glass');
 
 
 -- Cajero → pagos
@@ -316,3 +316,113 @@ INSERT INTO alergenos (nombre, icono) VALUES
 ('Dióxido de azufre',   'alergeno-sulfitos.svg'),
 ('Altramuces',          'alergeno-altramuces.svg'),
 ('Moluscos',            'alergeno-moluscos.svg');
+
+
+-- =============================================================
+-- GRUPOS DE MODIFICADORES
+-- =============================================================
+-- tipo 'articulo'  → opciones con precio (se suman al total)
+-- tipo 'comentario'→ texto libre / notas sin precio
+-- seleccion 'unica'    → radio button (solo una opción)
+-- seleccion 'multiple' → checkbox  (varias opciones)
+-- =============================================================
+
+INSERT INTO grupos_modificadores (nombre, tipo, seleccion, obligatorio, min_seleccion, max_seleccion) VALUES
+-- id=1
+('Término de cocción',      'articulo',    'unica',    TRUE,  1, 1),
+-- id=2
+('Tamaño de porción',       'articulo',    'unica',    FALSE, 0, 1),
+-- id=3
+('Tipo de pan',             'articulo',    'unica',    FALSE, 0, 1),
+-- id=4
+('Extras / Adicionales',    'articulo',    'multiple', FALSE, 0, 5),
+-- id=5
+('Sin ingredientes',        'articulo',    'multiple', FALSE, 0, 5),
+-- id=6
+('Salsa',                   'articulo',    'multiple', FALSE, 0, 3),
+-- id=7
+('Temperatura de bebida',   'articulo',    'unica',    FALSE, 0, 1),
+-- id=8
+('Tipo de leche',           'articulo',    'unica',    FALSE, 0, 1),
+-- id=9
+('Nivel de azúcar',         'articulo',    'unica',    FALSE, 0, 1),
+-- id=10
+('Notas de cocina',         'comentario',  'unica',    FALSE, 0, 1);
+
+
+-- =============================================================
+-- MODIFICADORES
+-- =============================================================
+
+INSERT INTO modificadores (grupo_modificador_id, nombre, precio_extra, orden_visual) VALUES
+-- Término de cocción (grupo 1)
+(1, 'Vuelta y vuelta',   0.00, 1),
+(1, 'Poco hecho',        0.00, 2),
+(1, 'Al punto',          0.00, 3),
+(1, 'Tres cuartos',      0.00, 4),
+(1, 'Bien hecho',        0.00, 5),
+
+-- Tamaño de porción (grupo 2)
+(2, 'Pequeño',           0.00, 1),
+(2, 'Mediano',           0.00, 2),
+(2, 'Grande',            1.50, 3),
+(2, 'Extra grande',      3.00, 4),
+
+-- Tipo de pan (grupo 3)
+(3, 'Pan blanco',        0.00, 1),
+(3, 'Pan integral',      0.00, 2),
+(3, 'Pan brioche',       0.50, 3),
+(3, 'Sin pan',           0.00, 4),
+
+-- Extras / Adicionales (grupo 4)
+(4, 'Queso extra',       1.00, 1),
+(4, 'Bacon',             1.50, 2),
+(4, 'Aguacate',          1.00, 3),
+(4, 'Huevo frito',       0.75, 4),
+(4, 'Jalapeños',         0.50, 5),
+(4, 'Cebolla caramelizada', 0.75, 6),
+
+-- Sin ingredientes (grupo 5)
+(5, 'Sin cebolla',       0.00, 1),
+(5, 'Sin tomate',        0.00, 2),
+(5, 'Sin lechuga',       0.00, 3),
+(5, 'Sin pepinillo',     0.00, 4),
+(5, 'Sin gluten',        0.00, 5),
+
+-- Salsa (grupo 6)
+(6, 'Kétchup',           0.00, 1),
+(6, 'Mayonesa',          0.00, 2),
+(6, 'Mostaza',           0.00, 3),
+(6, 'Salsa BBQ',         0.00, 4),
+(6, 'Salsa picante',     0.00, 5),
+(6, 'Sin salsa',         0.00, 6),
+
+-- Temperatura de bebida (grupo 7)
+(7, 'Frío',              0.00, 1),
+(7, 'Caliente',          0.00, 2),
+(7, 'Temperatura ambiente', 0.00, 3),
+
+-- Tipo de leche (grupo 8)
+(8, 'Leche entera',      0.00, 1),
+(8, 'Leche desnatada',   0.00, 2),
+(8, 'Leche de avena',    0.50, 3),
+(8, 'Leche de almendra', 0.50, 4),
+(8, 'Leche de soja',     0.50, 5),
+(8, 'Sin leche',         0.00, 6),
+
+-- Nivel de azúcar (grupo 9)
+(9, 'Sin azúcar',        0.00, 1),
+(9, 'Poco dulce',        0.00, 2),
+(9, 'Normal',            0.00, 3),
+(9, 'Extra dulce',       0.00, 4);
+
+
+-- =============================================================
+-- FORMAS DE PAGO
+-- sucursal_id NULL = disponible en todas las sucursales
+-- =============================================================
+
+INSERT INTO formas_pago (sucursal_id, nombre, tipo, requiere_referencia, estado) VALUES
+(NULL, 'Efectivo',              'efectivo',    FALSE, 'activo'),
+(NULL, 'Tarjeta de crédito',    'credito',     TRUE,  'activo'),
+(NULL, 'Transferencia bancaria','electronico', TRUE,  'activo');

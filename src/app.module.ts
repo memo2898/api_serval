@@ -49,6 +49,7 @@ import { SocketsModule } from './sockets/sockets.module';
 import { MonedasModule } from './monedas/monedas.module';
 import { ReservacionesModule } from './reservaciones/reservaciones.module';
 import { UsuarioRolModule } from './usuario_rol/usuario_rol.module';
+import { SucursalImpuestosModule } from './sucursal_impuestos/sucursal_impuestos.module';
 
 @Module({
   imports: [
@@ -117,6 +118,7 @@ import { UsuarioRolModule } from './usuario_rol/usuario_rol.module';
     MonedasModule,
     ReservacionesModule,
     UsuarioRolModule,
+    SucursalImpuestosModule,
   ],
   controllers: [],
   providers: [],

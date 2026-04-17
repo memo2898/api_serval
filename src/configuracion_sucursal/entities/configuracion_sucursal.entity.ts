@@ -1,6 +1,5 @@
 import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Sucursale as Sucursal } from '../../sucursales/entities/sucursale.entity';
-import { Impuesto } from '../../impuestos/entities/impuesto.entity';
 import { Tarifa } from '../../tarifas/entities/tarifa.entity';
 
 @Entity('public.configuracion_sucursal')
@@ -16,9 +15,6 @@ export class ConfiguracionSucursal {
 
   @Column({ type: "boolean" })
   tiene_barra: boolean | null;
-
-  @Column({ type: "integer" })
-  impuesto_defecto_id: number | null;
 
   @Column({ type: "integer" })
   tarifa_defecto_id: number | null;
@@ -50,10 +46,6 @@ export class ConfiguracionSucursal {
   @ManyToOne(() => Sucursal, { eager: true })
   @JoinColumn({ name: 'sucursal_id' })
   sucursal: Sucursal;
-
-  @ManyToOne(() => Impuesto, { eager: false })
-  @JoinColumn({ name: 'impuesto_defecto_id' })
-  impuesto_defecto: Impuesto;
 
   @ManyToOne(() => Tarifa, { eager: false })
   @JoinColumn({ name: 'tarifa_defecto_id' })

@@ -97,6 +97,37 @@ export class SocketsGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     this.mesasHandler.handleUsuarioSalio(client, data, this.server);
   }
 
+  /**
+   * Broadcast del merge de mesas: notifica a todos los clientes del floor plan
+   * que las mesas secundarias cambiaron a estado 'ocupada' y quedaron vinculadas
+   * a la principal (mesa_principal_id).
+   */
+  @SubscribeMessage('mesa:mesas_unidas')
+  onMesasUnidas(
+    client: Socket,
+    data: { principal_id: number; mesas_ids: number[] },
+  ) {
+    const { sucursal_id } = client.data as { sucursal_id: number };
+    for (const mesa_id of data.mesas_ids) {
+      this.server.to(`sucursal_${sucursal_id}_mesas`).emit('mesa:estado_cambio', {
+        mesa_id,
+        estado: 'ocupada',
+        mesa_principal_id: data.principal_id,
+      });
+    }
+  }
+
+  /**
+   * Relay de sincronización de líneas: rebroadcast a los demás clientes del mismo
+   * floor-plan (excluyendo al emisor) para que vean en tiempo real los artículos
+   * agregados/modificados/eliminados por otro camarero en la misma mesa.
+   */
+  @SubscribeMessage('orden:linea_sincronizada')
+  onLineaSincronizada(client: Socket, data: unknown) {
+    const { sucursal_id } = client.data as { sucursal_id: number };
+    client.to(`sucursal_${sucursal_id}_mesas`).emit('orden:linea_sincronizada', data as any);
+  }
+
   // ─── KDS ─────────────────────────────────────────────────────────────────
 
   @SubscribeMessage('orden:enviar_a_cocina')

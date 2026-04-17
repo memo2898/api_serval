@@ -31,6 +31,9 @@ export class Mesa {
   @Column({ type: "varchar" })
   estado: string | null;
 
+  @Column({ type: "integer", nullable: true, default: null })
+  personas: number | null;
+
   @Column({ type: "timestamp" })
   agregado_en: Date | null;
 

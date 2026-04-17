@@ -10,6 +10,7 @@ import { CreateOrdenLineaDto } from './dto/create-orden_linea.dto';
 import { UpdateOrdenLineaDto } from './dto/update-orden_linea.dto';
 import { OrdenLineaFiltersDto } from './dto/pagination.dto';
 import { OrdenLinea } from './entities/orden_linea.entity';
+import { OrdenLineaModificadore } from '../orden_linea_modificadores/entities/orden_linea_modificadore.entity';
 import { PaginationResponse } from './interfaces/pagination-response.interface';
 
 @Injectable()
@@ -17,6 +18,8 @@ export class OrdenLineasService {
   constructor(
     @InjectRepository(OrdenLinea)
     private ordenLineasRepository: Repository<OrdenLinea>,
+    @InjectRepository(OrdenLineaModificadore)
+    private modificadoresRepository: Repository<OrdenLineaModificadore>,
   ) {}
 
   private getErrorMessage(error: unknown): string {
@@ -78,6 +81,41 @@ export class OrdenLineasService {
     } catch (error: unknown) {
       throw new HttpException(
         `Error al obtener los registros: ${this.getErrorMessage(error)}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async findByOrden(ordenId: number) {
+    try {
+      const lineas = await this.ordenLineasRepository.find({
+        where: { orden_id: ordenId },
+        order: { agregado_en: 'ASC' },
+      });
+
+      if (!lineas.length) return [];
+
+      const lineaIds = lineas.map((l) => l.id as number);
+      const modificadores = await this.modificadoresRepository
+        .createQueryBuilder('olm')
+        .leftJoinAndSelect('olm.modificador', 'mod')
+        .where('olm.orden_linea_id IN (:...ids)', { ids: lineaIds })
+        .getMany();
+
+      const modsByLinea = new Map<number, OrdenLineaModificadore[]>();
+      for (const mod of modificadores) {
+        const list = modsByLinea.get(mod.orden_linea_id) ?? [];
+        list.push(mod);
+        modsByLinea.set(mod.orden_linea_id, list);
+      }
+
+      return lineas.map((l) => ({
+        ...l,
+        modificadores: modsByLinea.get(l.id as number) ?? [],
+      }));
+    } catch (error: unknown) {
+      throw new HttpException(
+        `Error al obtener líneas de la orden: ${this.getErrorMessage(error)}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

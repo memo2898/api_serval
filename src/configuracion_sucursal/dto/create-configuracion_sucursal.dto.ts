@@ -25,11 +25,6 @@ export class CreateConfiguracionSucursalDto {
   @ApiProperty({ example: 12345 })
   @IsOptional()
   @IsNumber()
-  impuesto_defecto_id?: number;
-
-  @ApiProperty({ example: 12345 })
-  @IsOptional()
-  @IsNumber()
   tarifa_defecto_id?: number;
 
   @ApiProperty({ example: "put some text here" })

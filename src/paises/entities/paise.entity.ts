@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
-
+import { Moneda } from '../../monedas/entities/moneda.entity';
 
 @Entity('public.paises')
 export class Paise {
@@ -12,8 +12,11 @@ export class Paise {
   @Column({ nullable: false })
   codigo_iso: string;
 
-  @Column({ type: "varchar" })
-  moneda_defecto: string | null;
+  @Column({ type: "integer" })
+  moneda_id: number | null;
+  @ManyToOne(() => Moneda, { eager: true })
+  @JoinColumn({ name: 'moneda_id' })
+  moneda: Moneda;
 
 
 }

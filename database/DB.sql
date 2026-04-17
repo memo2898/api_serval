@@ -24,7 +24,7 @@ CREATE TABLE tipo_documentos (
     funcion_validacion  TEXT,
     -- Ejemplo para input mask (ej: 000-0000000-0)
     formato_ejemplo     VARCHAR(50),
-    estado              VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado              VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en         TIMESTAMP DEFAULT NOW(),
     agregado_por        INT,
     actualizado_en      TIMESTAMP DEFAULT NOW(),
@@ -41,7 +41,7 @@ CREATE TABLE empresas (
     tipo_documento_id   INT REFERENCES tipo_documentos(id),
     numero_documento    VARCHAR(50),                    -- RNC, NIT, etc. según país
     logo                VARCHAR(500),
-    estado              VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado              VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en         TIMESTAMP DEFAULT NOW(),
     agregado_por        INT,
     actualizado_en      TIMESTAMP DEFAULT NOW(),
@@ -54,7 +54,7 @@ CREATE TABLE sucursales (
     nombre          VARCHAR(150) NOT NULL,
     direccion       VARCHAR(300),
     telefono        VARCHAR(20),
-    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en     TIMESTAMP DEFAULT NOW(),
     agregado_por    INT,
     actualizado_en  TIMESTAMP DEFAULT NOW(),
@@ -65,7 +65,7 @@ CREATE TABLE terminales (
     id              SERIAL PRIMARY KEY,
     sucursal_id     INT NOT NULL REFERENCES sucursales(id) ON DELETE CASCADE,
     nombre          VARCHAR(100) NOT NULL,
-    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en     TIMESTAMP DEFAULT NOW(),
     agregado_por    INT,
     actualizado_en  TIMESTAMP DEFAULT NOW(),
@@ -79,7 +79,8 @@ CREATE TABLE terminales (
 CREATE TABLE roles (
     id          SERIAL PRIMARY KEY,
     nombre      VARCHAR(50) NOT NULL UNIQUE,
-    descripcion VARCHAR(200)
+    descripcion VARCHAR(200),
+    icono       VARCHAR(100)
 );
 
 CREATE TABLE permisos (
@@ -101,7 +102,7 @@ CREATE TABLE usuarios (
     apellido        VARCHAR(100),
     username        VARCHAR(50) NOT NULL UNIQUE,
     pin             VARCHAR(10) NOT NULL,
-    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en     TIMESTAMP DEFAULT NOW(),
     agregado_por    INT REFERENCES usuarios(id),
     actualizado_en  TIMESTAMP DEFAULT NOW(),
@@ -133,7 +134,7 @@ CREATE TABLE monedas (
     nombre    VARCHAR(100) NOT NULL,     -- Peso Dominicano, Dólar, Euro
     simbolo   VARCHAR(10) NOT NULL,      -- RD$, $, €
     decimales INT NOT NULL DEFAULT 2,
-    estado    VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo'))
+    estado    VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado'))
 );
 
 CREATE TABLE paises (
@@ -150,7 +151,7 @@ CREATE TABLE impuestos (
     porcentaje       DECIMAL(5,2) NOT NULL,
     tipo             VARCHAR(20) NOT NULL CHECK (tipo IN ('general', 'especifico')),
     tipo_aplicacion  VARCHAR(20) NOT NULL CHECK (tipo_aplicacion IN ('sobre_precio', 'incluido_en_precio')),
-    estado           VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado           VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en      TIMESTAMP DEFAULT NOW(),
     agregado_por     INT REFERENCES usuarios(id),
     actualizado_en   TIMESTAMP DEFAULT NOW(),
@@ -170,7 +171,7 @@ CREATE TABLE familias (
     orden_visual        INT DEFAULT 0,
     destino_impresion   VARCHAR(20) DEFAULT 'cocina'
                         CHECK (destino_impresion IN ('cocina', 'barra', 'caja', 'ninguno')),
-    estado              VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado              VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en         TIMESTAMP DEFAULT NOW(),
     agregado_por        INT REFERENCES usuarios(id),
     actualizado_en      TIMESTAMP DEFAULT NOW(),
@@ -182,7 +183,7 @@ CREATE TABLE subfamilias (
     familia_id      INT NOT NULL REFERENCES familias(id) ON DELETE CASCADE,
     nombre          VARCHAR(100) NOT NULL,
     orden_visual    INT DEFAULT 0,
-    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en     TIMESTAMP DEFAULT NOW(),
     agregado_por    INT REFERENCES usuarios(id),
     actualizado_en  TIMESTAMP DEFAULT NOW(),
@@ -204,7 +205,7 @@ CREATE TABLE articulos (
     impuesto_id         INT REFERENCES impuestos(id),
     tiempo_preparacion  INT DEFAULT 0,
     imagen              VARCHAR(500),
-    estado              VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado              VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en         TIMESTAMP DEFAULT NOW(),
     agregado_por        INT REFERENCES usuarios(id),
     actualizado_en      TIMESTAMP DEFAULT NOW(),
@@ -217,11 +218,19 @@ CREATE TABLE articulo_impuestos (
     PRIMARY KEY (articulo_id, impuesto_id)
 );
 
+CREATE TABLE sucursal_impuestos (
+    sucursal_id         INT REFERENCES sucursales(id) ON DELETE CASCADE,
+    impuesto_id         INT REFERENCES impuestos(id) ON DELETE CASCADE,
+    obligatorio         BOOLEAN DEFAULT TRUE,
+    orden_aplicacion    INT DEFAULT 0,
+    PRIMARY KEY (sucursal_id, impuesto_id)
+);
+
 CREATE TABLE tarifas (
     id              SERIAL PRIMARY KEY,
     sucursal_id     INT REFERENCES sucursales(id) ON DELETE CASCADE,
     nombre          VARCHAR(100) NOT NULL,
-    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en     TIMESTAMP DEFAULT NOW(),
     agregado_por    INT REFERENCES usuarios(id),
     actualizado_en  TIMESTAMP DEFAULT NOW(),
@@ -264,7 +273,7 @@ CREATE TABLE grupos_modificadores (
     obligatorio     BOOLEAN DEFAULT FALSE,
     min_seleccion   INT DEFAULT 0,
     max_seleccion   INT DEFAULT 1,
-    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en     TIMESTAMP DEFAULT NOW(),
     agregado_por    INT REFERENCES usuarios(id),
     actualizado_en  TIMESTAMP DEFAULT NOW(),
@@ -277,7 +286,7 @@ CREATE TABLE modificadores (
     nombre                VARCHAR(100) NOT NULL,
     precio_extra          DECIMAL(10,2) DEFAULT 0,
     orden_visual          INT DEFAULT 0,
-    estado                VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado                VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en           TIMESTAMP DEFAULT NOW(),
     agregado_por          INT REFERENCES usuarios(id),
     actualizado_en        TIMESTAMP DEFAULT NOW(),
@@ -299,7 +308,7 @@ CREATE TABLE combos (
     sucursal_id     INT REFERENCES sucursales(id) ON DELETE CASCADE,
     nombre          VARCHAR(150) NOT NULL,
     precio          DECIMAL(10,2) NOT NULL,
-    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en     TIMESTAMP DEFAULT NOW(),
     agregado_por    INT REFERENCES usuarios(id),
     actualizado_en  TIMESTAMP DEFAULT NOW(),
@@ -323,7 +332,7 @@ CREATE TABLE zonas (
     sucursal_id     INT NOT NULL REFERENCES sucursales(id) ON DELETE CASCADE,
     nombre          VARCHAR(100) NOT NULL,
     orden_visual    INT DEFAULT 0,
-    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en     TIMESTAMP DEFAULT NOW(),
     agregado_por    INT REFERENCES usuarios(id),
     actualizado_en  TIMESTAMP DEFAULT NOW(),
@@ -340,7 +349,8 @@ CREATE TABLE mesas (
     posicion_y      DECIMAL(8,2) DEFAULT 0,
     -- estado operativo de la mesa (no es auditoría)
     estado          VARCHAR(20) DEFAULT 'libre'
-                    CHECK (estado IN ('libre', 'ocupada', 'reservada', 'por_cobrar', 'bloqueada')),
+                    CHECK (estado IN ('libre', 'ocupada', 'reservada', 'por_cobrar', 'bloqueada', 'eliminado')),
+    personas        INT DEFAULT NULL,
     agregado_en     TIMESTAMP DEFAULT NOW(),
     agregado_por    INT REFERENCES usuarios(id),
     actualizado_en  TIMESTAMP DEFAULT NOW(),
@@ -361,7 +371,7 @@ CREATE TABLE clientes (
     tipo_documento_id   INT REFERENCES tipo_documentos(id),
     numero_documento    VARCHAR(50),
     direccion           VARCHAR(300),
-    estado              VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado              VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en         TIMESTAMP DEFAULT NOW(),
     agregado_por        INT REFERENCES usuarios(id),
     actualizado_en      TIMESTAMP DEFAULT NOW(),
@@ -378,7 +388,7 @@ CREATE TABLE formas_pago (
     nombre               VARCHAR(100) NOT NULL,
     tipo                 VARCHAR(20) NOT NULL CHECK (tipo IN ('efectivo', 'electronico', 'credito')),
     requiere_referencia  BOOLEAN DEFAULT FALSE,
-    estado               VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado               VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en          TIMESTAMP DEFAULT NOW(),
     agregado_por         INT REFERENCES usuarios(id),
     actualizado_en       TIMESTAMP DEFAULT NOW(),
@@ -399,7 +409,7 @@ CREATE TABLE descuentos (
     requiere_autorizacion BOOLEAN DEFAULT FALSE,
     fecha_inicio          DATE,
     fecha_fin             DATE,
-    estado                VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado                VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en           TIMESTAMP DEFAULT NOW(),
     agregado_por          INT REFERENCES usuarios(id),
     actualizado_en        TIMESTAMP DEFAULT NOW(),
@@ -420,7 +430,7 @@ CREATE TABLE turnos_caja (
     monto_cierre_declarado  DECIMAL(10,2),
     monto_cierre_real       DECIMAL(10,2),
     -- estado del turno (no es auditoría)
-    estado                  VARCHAR(20) DEFAULT 'abierto' CHECK (estado IN ('abierto', 'cerrado')),
+    estado                  VARCHAR(20) DEFAULT 'abierto' CHECK (estado IN ('abierto', 'cerrado', 'eliminado')),
     agregado_en             TIMESTAMP DEFAULT NOW(),
     agregado_por            INT REFERENCES usuarios(id),
     actualizado_en          TIMESTAMP DEFAULT NOW(),
@@ -453,7 +463,7 @@ CREATE TABLE ordenes (
                     CHECK (tipo_servicio IN ('mesa', 'barra', 'take_away', 'delivery')),
     -- estado operativo de la orden (no es auditoría)
     estado          VARCHAR(20) DEFAULT 'abierta'
-                    CHECK (estado IN ('abierta', 'en_preparacion', 'lista', 'cobrada', 'cancelada', 'anulada')),
+                    CHECK (estado IN ('abierta', 'en_preparacion', 'lista', 'cobrada', 'cancelada', 'anulada', 'eliminado')),
     numero_orden    INT,
     descuento_total DECIMAL(10,2) DEFAULT 0,
     subtotal        DECIMAL(10,2) DEFAULT 0,
@@ -479,7 +489,7 @@ CREATE TABLE orden_lineas (
     subtotal_linea   DECIMAL(10,2) NOT NULL,
     -- estado operativo de la línea (no es auditoría)
     estado           VARCHAR(20) DEFAULT 'pendiente'
-                     CHECK (estado IN ('pendiente', 'en_preparacion', 'lista', 'entregada', 'cancelada')),
+                     CHECK (estado IN ('pendiente', 'en_preparacion', 'lista', 'entregada', 'cancelada', 'eliminado')),
     enviado_a_cocina BOOLEAN DEFAULT FALSE,
     fecha_envio      TIMESTAMP,
     cuenta_num       INT DEFAULT 1,
@@ -538,7 +548,7 @@ CREATE TABLE destinos_impresion (
     nombre          VARCHAR(100) NOT NULL,
     tipo            VARCHAR(20) NOT NULL CHECK (tipo IN ('impresora', 'pantalla_kds')),
     ip_impresora    VARCHAR(50),
-    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo')),
+    estado          VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'inactivo', 'eliminado')),
     agregado_en     TIMESTAMP DEFAULT NOW(),
     agregado_por    INT REFERENCES usuarios(id),
     actualizado_en  TIMESTAMP DEFAULT NOW(),
@@ -551,7 +561,7 @@ CREATE TABLE kds_ordenes (
     destino_id       INT NOT NULL REFERENCES destinos_impresion(id),
     -- estado operativo del KDS (no es auditoría)
     estado           VARCHAR(20) DEFAULT 'pendiente'
-                     CHECK (estado IN ('pendiente', 'en_preparacion', 'listo')),
+                     CHECK (estado IN ('pendiente', 'en_preparacion', 'listo', 'eliminado')),
     tiempo_recibido  TIMESTAMP DEFAULT NOW(),
     tiempo_preparado TIMESTAMP
 );
@@ -589,7 +599,6 @@ CREATE TABLE configuracion_sucursal (
     tiene_mesas                  BOOLEAN DEFAULT TRUE,
     tiene_delivery               BOOLEAN DEFAULT FALSE,
     tiene_barra                  BOOLEAN DEFAULT FALSE,
-    impuesto_defecto_id          INT REFERENCES impuestos(id),
     tarifa_defecto_id            INT REFERENCES tarifas(id),
     moneda_id                    INT REFERENCES monedas(id),
     formato_fecha                VARCHAR(20) DEFAULT 'DD/MM/YYYY',
@@ -620,7 +629,7 @@ CREATE TABLE reservaciones (
     num_personas    INT NOT NULL DEFAULT 1,
     -- estado del ciclo de vida
     estado          VARCHAR(20) DEFAULT 'pendiente'
-                    CHECK (estado IN ('pendiente', 'confirmada', 'sentada', 'cancelada', 'no_show')),
+                    CHECK (estado IN ('pendiente', 'confirmada', 'sentada', 'cancelada', 'no_show', 'eliminado')),
     notas           TEXT,
     -- si se cancela, quién y cuándo
     cancelada_en    TIMESTAMP,
@@ -655,3 +664,11 @@ CREATE INDEX idx_reservaciones_sucursal ON reservaciones(sucursal_id);
 CREATE INDEX idx_reservaciones_fecha    ON reservaciones(fecha_hora);
 CREATE INDEX idx_reservaciones_estado   ON reservaciones(estado);
 CREATE INDEX idx_reservaciones_mesa     ON reservaciones(mesa_id);
+
+
+-- =============================================================
+-- PARCHES / MIGRACIONES
+-- =============================================================
+
+-- 2026-04-17: columna personas en mesas (nº de comensales en tiempo real)
+ALTER TABLE mesas ADD COLUMN IF NOT EXISTS personas INT DEFAULT NULL;

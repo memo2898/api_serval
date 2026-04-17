@@ -27,8 +27,20 @@ export class OrdenesService {
 
   async create(dto: CreateOrdeneDto) {
     try {
-      const record = this.ordenesRepository.create(dto);
-      return await this.ordenesRepository.save(record);
+      return await this.ordenesRepository.manager.transaction(async (em) => {
+        // Lock a nivel de sucursal para evitar numero_orden duplicado en concurrencia
+        await em.query('SELECT pg_advisory_xact_lock($1)', [dto.sucursal_id]);
+
+        const [{ next }] = await em.query<[{ next: string }]>(
+          `SELECT COALESCE(MAX(numero_orden), 0) + 1 AS next
+             FROM ordenes
+            WHERE sucursal_id = $1`,
+          [dto.sucursal_id],
+        );
+
+        const record = em.create(Ordene, { ...dto, numero_orden: Number(next) });
+        return await em.save(record);
+      });
     } catch (error: unknown) {
       throw new HttpException(
         `Error al crear el registro: ${this.getErrorMessage(error)}`,

@@ -6,20 +6,29 @@ import { PresenciaService } from '../services/presencia.service';
 export class MesasHandler {
   constructor(private readonly presenciaService: PresenciaService) {}
 
-  handleUsuarioEntro(client: Socket, data: { mesa_id: number }, server: Server) {
-    const { usuario_id, nombre, sucursal_id } = client.data as {
+  handleUsuarioEntro(client: Socket, data: { mesa_id: number; personas?: number }, server: Server) {
+    const { usuario_id, nombre, rol, sucursal_id } = client.data as {
       usuario_id: number;
       nombre: string;
+      rol: string;
       sucursal_id: number;
     };
 
-    this.presenciaService.registrar(client.id, usuario_id, nombre, sucursal_id, data.mesa_id);
+    this.presenciaService.registrar(client.id, usuario_id, nombre, rol, sucursal_id, data.mesa_id);
 
     server.to(`sucursal_${sucursal_id}_mesas`).emit('mesa:usuario_entro', {
       mesa_id: data.mesa_id,
       usuario_id,
       nombre,
+      rol,
       timestamp: new Date().toISOString(),
+    });
+
+    // Broadcast del cambio de estado para actualizar el floor plan en todos los clientes
+    server.to(`sucursal_${sucursal_id}_mesas`).emit('mesa:estado_cambio', {
+      mesa_id: data.mesa_id,
+      estado: 'ocupada',
+      ...(data.personas !== undefined ? { personas: data.personas } : {}),
     });
   }
 

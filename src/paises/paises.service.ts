@@ -144,15 +144,15 @@ export class PaisesService {
     if (filters.nombre) {
       qb.andWhere('paise.nombre LIKE :nombre', { nombre: `%${filters.nombre}%` });
     }
-    if (filters.moneda_defecto) {
-      qb.andWhere('paise.moneda_defecto LIKE :moneda_defecto', { moneda_defecto: `%${filters.moneda_defecto}%` });
+    if (filters.moneda_id !== undefined) {
+      qb.andWhere('paise.moneda_id = :moneda_id', { moneda_id: filters.moneda_id });
     }
   }
 
   private applySorting(qb: SelectQueryBuilder<Paise>, sort?: string) {
     if (sort) {
       const [field, direction] = sort.split(':');
-      const validFields = ['id', 'nombre', 'codigo_iso', 'moneda_defecto'];
+      const validFields = ['id', 'nombre', 'codigo_iso', 'moneda_id'];
       if (validFields.includes(field) && ['ASC', 'DESC'].includes(direction?.toUpperCase())) {
         qb.orderBy(`paise.${field}`, direction.toUpperCase() as 'ASC' | 'DESC');
         return;

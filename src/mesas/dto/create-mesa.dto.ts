@@ -37,6 +37,11 @@ export class CreateMesaDto {
   @IsString()
   estado?: string;
 
+  @ApiProperty({ example: 4 })
+  @IsOptional()
+  @IsNumber()
+  personas?: number;
+
   @ApiProperty({ example: "2025-04-01" })
   @IsOptional()
   @IsDateString()

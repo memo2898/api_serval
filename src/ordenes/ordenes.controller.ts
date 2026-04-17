@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { OrdenesService } from './ordenes.service';
+import { OrdenLineasService } from '../orden_lineas/orden_lineas.service';
 import { CreateOrdeneDto } from './dto/create-ordene.dto';
 import { UpdateOrdeneDto } from './dto/update-ordene.dto';
 import { OrdeneFiltersDto } from './dto/pagination.dto';
@@ -18,7 +19,10 @@ import { OrdeneFiltersDto } from './dto/pagination.dto';
 @ApiTags('Ordenes')
 @Controller('ordenes')
 export class OrdenesController {
-  constructor(private readonly ordenesService: OrdenesService) {}
+  constructor(
+    private readonly ordenesService: OrdenesService,
+    private readonly ordenLineasService: OrdenLineasService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Crear un nuevo ordene' })
@@ -41,6 +45,18 @@ export class OrdenesController {
   @ApiQuery({ name: 'sort',  required: false, type: String, description: 'Campo:dirección (ej: id:ASC)' })
   findAll(@Query() filters: OrdeneFiltersDto) {
     return this.ordenesService.findAll(filters);
+  }
+
+  @Get(':id/lineas')
+  @ApiOperation({
+    summary: 'Obtener líneas de una orden',
+    description: 'Retorna todas las líneas de la orden con su artículo y modificadores aplicados.',
+  })
+  @ApiResponse({ status: 200, description: 'Líneas obtenidas exitosamente.' })
+  @ApiResponse({ status: 404, description: 'Orden no encontrada.' })
+  @ApiParam({ name: 'id', type: 'number', description: 'ID de la orden' })
+  getLineas(@Param('id', ParseIntPipe) id: number) {
+    return this.ordenLineasService.findByOrden(id);
   }
 
   @Get(':id')
