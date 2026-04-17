@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ServalPOS — KDS Cocina</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #eef0f8;
+  --surface: #ffffff;
+  --surface2: #f4f6fc;
+  --surface3: #e8ecf6;
+  --accent: #d63050;
+  --text: #1a1b2e;
+  --text-muted: #5f628a;
+  --text-dim: #adb0cc;
+  --border: rgba(80,80,180,0.13);
+  --border-strong: rgba(80,80,180,0.22);
+  --green: #00904c;
+  --orange: #c56200;
+  --yellow: #9e7400;
+  --blue: #1a52cc;
+  --red: #c62828;
+  --radius: 10px;
+  --radius-lg: 16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; }
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex; align-items: center; padding: 0 20px; height: 52px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  gap: 12px; box-shadow: 0 1px 4px rgba(80,80,180,0.07);
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-brand { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent); font-size: 15px; }
+.topbar-sep { color: var(--border-strong); font-size: 18px; }
+.topbar-title { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+.topbar-spacer { flex: 1; }
+.topbar-clock { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--text); }
+.topbar-stat {
+  font-size: 12px; padding: 4px 12px; border-radius: 20px; font-weight: 600;
+  white-space: nowrap;
+}
+.stat-pend  { background: rgba(197,98,0,0.10);   color: var(--orange); border: 1px solid rgba(197,98,0,0.25); }
+.stat-prep  { background: rgba(26,82,204,0.09);  color: var(--blue);   border: 1px solid rgba(26,82,204,0.22); }
+.stat-list  { background: rgba(0,144,76,0.09);   color: var(--green);  border: 1px solid rgba(0,144,76,0.22); }
+
+/* ── FILTROS ── */
+.filtros {
+  display: flex; gap: 8px; padding: 10px 20px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  overflow-x: auto; flex-shrink: 0;
+}
+.filtros::-webkit-scrollbar { height: 3px; }
+.filtros::-webkit-scrollbar-thumb { background: rgba(80,80,180,0.18); border-radius: 3px; }
+
+.filtro-btn {
+  padding: 7px 16px; border-radius: 30px; border: 1px solid var(--border);
+  cursor: pointer; background: transparent; color: var(--text-muted);
+  font-size: 12px; font-family: inherit; font-weight: 600;
+  white-space: nowrap; transition: all 0.15s;
+}
+.filtro-btn:active { transform: scale(0.96); }
+.filtro-btn.active { color: #fff; }
+.filtro-btn.f-all.active     { background: var(--text);   border-color: var(--text); }
+.filtro-btn.f-pending.active { background: var(--orange); border-color: var(--orange); }
+.filtro-btn.f-prep.active    { background: var(--blue);   border-color: var(--blue); }
+.filtro-btn.f-ready.active   { background: var(--green);  border-color: var(--green); }
+.filtro-btn.f-tipo.active    { background: var(--accent); border-color: var(--accent); }
+
+/* ── GRID ── */
+.kds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px; padding: 16px 20px; align-content: start;
+}
+
+/* ── COMANDA CARD ── */
+.comanda {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); display: flex; flex-direction: column;
+  overflow: hidden; transition: box-shadow 0.2s;
+}
+.comanda:hover { box-shadow: 0 4px 16px rgba(80,80,180,0.10); }
+.comanda.estado-pendiente      { border-top: 3px solid var(--orange); }
+.comanda.estado-en_preparacion { border-top: 3px solid var(--blue); }
+.comanda.estado-listo          { border-top: 3px solid var(--green); opacity: 0.65; }
+
+/* Header */
+.comanda-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px 10px; border-bottom: 1px solid var(--border);
+}
+.comanda-num  { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--accent); }
+.comanda-mesa { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.comanda-spacer { flex: 1; }
+
+.comanda-tipo {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 12px;
+}
+.tipo-mesa     { background: rgba(80,80,180,0.08);  color: var(--text-muted); }
+.tipo-take_away{ background: rgba(197,98,0,0.10);   color: var(--orange); }
+.tipo-barra    { background: rgba(26,82,204,0.09);  color: var(--blue); }
+.tipo-delivery { background: rgba(198,40,40,0.08);  color: var(--red); }
+
+/* Timer */
+.timer { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; }
+.timer.ok   { color: var(--green); }
+.timer.warn { color: var(--yellow); }
+.timer.late { color: var(--red); animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0.35; } }
+
+/* Lineas */
+.comanda-lineas { padding: 10px 14px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+.linea-kds { display: flex; align-items: flex-start; gap: 10px; }
+
+.linea-check {
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 1.5px solid var(--border-strong); background: var(--surface2);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.15s; margin-top: 1px;
+}
+.linea-check:hover { border-color: var(--green); background: rgba(0,144,76,0.06); }
+.linea-check.checked { background: var(--green); border-color: var(--green); }
+.linea-check.checked::after {
+  content: ''; display: block; width: 5px; height: 9px;
+  border: 2px solid #fff; border-left: none; border-top: none;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.linea-info { flex: 1; }
+.linea-nombre { font-size: 14px; font-weight: 600; line-height: 1.35; }
+.linea-nombre.done { text-decoration: line-through; color: var(--text-dim); }
+
+.linea-qty {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px; border-radius: 6px;
+  background: rgba(214,48,80,0.10); color: var(--accent);
+  font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  padding: 0 5px; margin-right: 6px; flex-shrink: 0;
+}
+
+.linea-mods { font-size: 11px; color: var(--text-muted); margin-top: 3px; padding-left: 2px; line-height: 1.4; }
+
+.linea-nota {
+  font-size: 11px; color: var(--orange); margin-top: 4px; padding: 4px 8px;
+  background: rgba(197,98,0,0.07); border-radius: 6px; border-left: 2px solid var(--orange);
+  display: flex; align-items: flex-start; gap: 5px;
+}
+.linea-nota-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: rgba(197,98,0,0.15); font-size: 9px; font-weight: 700;
+  flex-shrink: 0; margin-top: 1px;
+}
+
+/* Footer */
+.comanda-footer {
+  display: flex; gap: 8px; padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+.btn-accion {
+  flex: 1; padding: 10px 8px; border-radius: var(--radius); border: none;
+  font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+  transition: all 0.15s; letter-spacing: 0.3px;
+}
+.btn-accion:active { transform: scale(0.97); }
+.btn-iniciar  { background: rgba(26,82,204,0.10); color: var(--blue);   border: 1px solid rgba(26,82,204,0.22); }
+.btn-iniciar:active  { background: rgba(26,82,204,0.22); }
+.btn-listo    { background: rgba(0,144,76,0.10);  color: var(--green);  border: 1px solid rgba(0,144,76,0.22); }
+.btn-listo:active    { background: rgba(0,144,76,0.22); }
+.btn-entregar { background: var(--green); color: #000; }
+.btn-entregar:active { opacity: 0.85; }
+.btn-reimprimir { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); flex: 0 0 auto; padding: 10px 12px; }
+.btn-reimprimir:active { background: var(--surface3); }
+
+/* Empty state */
+.empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 60vh; gap: 12px;
+  color: var(--text-dim); grid-column: 1 / -1;
+}
+.empty-icon { font-size: 48px; opacity: 0.3; }
+.empty-txt  { font-size: 15px; }
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(16px);
+  padding: 11px 24px; border-radius: 40px; font-size: 13px; font-weight: 600;
+  z-index: 9999; opacity: 0; transition: all 0.22s ease; pointer-events: none; white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.success { background: var(--green); color: #fff; }
+#toast.info    { background: var(--blue);  color: #fff; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(80,80,180,0.18); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <span class="topbar-brand">ServalPOS</span>
+  <span class="topbar-sep">|</span>
+  <span class="topbar-title">KDS — Cocina</span>
+  <div class="topbar-spacer"></div>
+  <span class="topbar-stat stat-pend" id="s-pend">0 pendientes</span>
+  <span class="topbar-stat stat-prep" id="s-prep">0 en preparación</span>
+  <span class="topbar-stat stat-list" id="s-list">0 listos</span>
+  <span class="topbar-clock" id="reloj">00:00:00</span>
+</div>
+
+<!-- FILTROS -->
+<div class="filtros">
+  <button class="filtro-btn f-all active"     onclick="setFiltro('todas',this)">Todas</button>
+  <button class="filtro-btn f-pending"         onclick="setFiltro('pendiente',this)">Pendientes</button>
+  <button class="filtro-btn f-prep"            onclick="setFiltro('en_preparacion',this)">En preparación</button>
+  <button class="filtro-btn f-ready"           onclick="setFiltro('listo',this)">Listos</button>
+  <button class="filtro-btn f-tipo"            onclick="setFiltro('mesa',this)">Mesa</button>
+  <button class="filtro-btn f-tipo"            onclick="setFiltro('take_away',this)">Take Away</button>
+  <button class="filtro-btn f-tipo"            onclick="setFiltro('barra',this)">Barra</button>
+  <button class="filtro-btn f-tipo"            onclick="setFiltro('delivery',this)">Delivery</button>
+</div>
+
+<!-- GRID KDS -->
+<div class="kds-grid" id="kds-grid"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  DATOS DE DEMO  (reemplazar por fetch al backend)
+// ═══════════════════════════════════════════════
+let comandas = [
+  {
+    id: 'C-0041', numero: '#0041', mesa: 'M2', tipo: 'mesa',
+    estado: 'pendiente', abierta: Date.now() - 3 * 60000,
+    lineas: [
+      { id: 1, nombre: 'Churrasco',   qty: 1, mods: 'Término: al punto · Acompañamiento: papas fritas', nota: 'Sin sal', done: false },
+      { id: 2, nombre: 'Lomo Fino',   qty: 1, mods: 'Término: poco hecho', nota: '', done: false },
+      { id: 3, nombre: 'Coca Cola',   qty: 2, mods: '', nota: '', done: false },
+    ]
+  },
+  {
+    id: 'C-0042', numero: '#0042', mesa: 'T2', tipo: 'mesa',
+    estado: 'en_preparacion', abierta: Date.now() - 11 * 60000,
+    lineas: [
+      { id: 4, nombre: 'Costillas BBQ',   qty: 2, mods: 'Extras: chimichurri, salsa BBQ', nota: '', done: true },
+      { id: 5, nombre: 'Ensalada Verde',  qty: 1, mods: '', nota: 'Sin cebolla', done: false },
+      { id: 6, nombre: 'Agua Mineral',    qty: 3, mods: '', nota: '', done: true },
+    ]
+  },
+  {
+    id: 'C-0043', numero: '#0043', mesa: '—', tipo: 'take_away',
+    estado: 'pendiente', abierta: Date.now() - 6 * 60000,
+    lineas: [
+      { id: 7, nombre: 'Pollo a la Brasa', qty: 1, mods: '', nota: '', done: false },
+      { id: 8, nombre: 'Jugo Natural',     qty: 1, mods: 'Sabor: maracuyá', nota: '', done: false },
+    ]
+  },
+  {
+    id: 'C-0040', numero: '#0040', mesa: 'M4', tipo: 'mesa',
+    estado: 'listo', abierta: Date.now() - 22 * 60000,
+    lineas: [
+      { id: 9,  nombre: 'Filete Miñón', qty: 1, mods: 'Término: bien hecho', nota: '', done: true },
+      { id: 10, nombre: 'Vino Tinto',   qty: 1, mods: '', nota: '', done: true },
+    ]
+  },
+  {
+    id: 'C-0044', numero: '#0044', mesa: '—', tipo: 'delivery',
+    estado: 'pendiente', abierta: Date.now() - 2 * 60000,
+    lineas: [
+      { id: 11, nombre: 'Chef Especial', qty: 1, mods: 'Término: al punto', nota: 'Alergia: nueces', done: false },
+      { id: 12, nombre: 'Brownie',       qty: 2, mods: '', nota: '', done: false },
+      { id: 13, nombre: 'Coca Cola',     qty: 2, mods: '', nota: '', done: false },
+    ]
+  },
+  {
+    id: 'C-0039', numero: '#0039', mesa: 'B2', tipo: 'barra',
+    estado: 'en_preparacion', abierta: Date.now() - 8 * 60000,
+    lineas: [
+      { id: 14, nombre: 'Cerveza Local',  qty: 3, mods: '', nota: '', done: false },
+      { id: 15, nombre: 'Tabla de Quesos',qty: 1, mods: '', nota: '', done: false },
+    ]
+  },
+];
+
+// ═══════════════════════════════════════════════
+//  ESTADO
+// ═══════════════════════════════════════════════
+let filtroActivo = 'todas';
+
+// ═══════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════
+function tiempoStr(ms) {
+  const mins = Math.floor(ms / 60000);
+  const segs = Math.floor((ms % 60000) / 1000);
+  return String(mins).padStart(2, '0') + ':' + String(segs).padStart(2, '0');
+}
+
+function timerClass(ms, estado) {
+  if (estado === 'listo') return 'ok';
+  const mins = ms / 60000;
+  if (mins > 15) return 'late';
+  if (mins > 8)  return 'warn';
+  return 'ok';
+}
+
+function tipoLabel(t) {
+  return { mesa: 'Mesa', take_away: 'Take Away', barra: 'Barra', delivery: 'Delivery' }[t] || t;
+}
+
+function btnLabel(estado) {
+  if (estado === 'pendiente')      return '▶ Iniciar preparación';
+  if (estado === 'en_preparacion') return '✓ Marcar listo';
+  return '↑ Entregar / Archivar';
+}
+
+function btnCls(estado) {
+  if (estado === 'pendiente')      return 'btn-iniciar';
+  if (estado === 'en_preparacion') return 'btn-listo';
+  return 'btn-entregar';
+}
+
+function toast(msg, tipo = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + tipo;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = 'toast'; }, 2600);
+}
+
+// ═══════════════════════════════════════════════
+//  FILTRO
+// ═══════════════════════════════════════════════
+function setFiltro(f, btn) {
+  filtroActivo = f;
+  document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function aplicarFiltro(c) {
+  if (filtroActivo === 'todas')          return true;
+  if (filtroActivo === 'pendiente')      return c.estado === 'pendiente';
+  if (filtroActivo === 'en_preparacion') return c.estado === 'en_preparacion';
+  if (filtroActivo === 'listo')          return c.estado === 'listo';
+  return c.tipo === filtroActivo;
+}
+
+// ═══════════════════════════════════════════════
+//  ACCIONES
+// ═══════════════════════════════════════════════
+function cambiarEstado(id) {
+  const c = comandas.find(x => x.id === id);
+  if (!c) return;
+  if (c.estado === 'pendiente') {
+    c.estado = 'en_preparacion';
+    toast('Comanda ' + c.numero + ' — en preparación', 'info');
+  } else if (c.estado === 'en_preparacion') {
+    c.estado = 'listo';
+    toast('Comanda ' + c.numero + ' — lista ✓', 'success');
+  } else if (c.estado === 'listo') {
+    comandas = comandas.filter(x => x.id !== id);
+    toast('Comanda ' + c.numero + ' entregada', 'success');
+  }
+  render();
+}
+
+function toggleLinea(cmdId, lineaId) {
+  const c = comandas.find(x => x.id === cmdId);
+  if (!c) return;
+  const l = c.lineas.find(x => x.id === lineaId);
+  if (l) l.done = !l.done;
+  render();
+}
+
+function reimprimir(id) {
+  const c = comandas.find(x => x.id === id);
+  if (c) toast('Reimprimiendo ' + c.numero + '…', 'info');
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════
+function render() {
+  const now = Date.now();
+
+  // Stats
+  const pend = comandas.filter(c => c.estado === 'pendiente').length;
+  const prep = comandas.filter(c => c.estado === 'en_preparacion').length;
+  const list = comandas.filter(c => c.estado === 'listo').length;
+  document.getElementById('s-pend').textContent = pend + ' pendiente' + (pend === 1 ? '' : 's');
+  document.getElementById('s-prep').textContent = prep + ' en preparación';
+  document.getElementById('s-list').textContent = list + ' listo' + (list === 1 ? '' : 's');
+
+  const vis = comandas.filter(aplicarFiltro);
+  const grid = document.getElementById('kds-grid');
+
+  if (!vis.length) {
+    grid.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">✓</div>
+        <div class="empty-txt">Sin comandas activas</div>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = vis.map(c => {
+    const elapsed = now - c.abierta;
+    const tc = timerClass(elapsed, c.estado);
+
+    return `
+      <div class="comanda estado-${c.estado}">
+
+        <div class="comanda-header">
+          <span class="comanda-num">${c.numero}</span>
+          <span class="comanda-mesa">${c.tipo === 'mesa' ? 'Mesa ' + c.mesa : ''}</span>
+          <span class="comanda-tipo tipo-${c.tipo}">${tipoLabel(c.tipo)}</span>
+          <div class="comanda-spacer"></div>
+          <span class="timer ${tc}" data-abierta="${c.abierta}">${tiempoStr(elapsed)}</span>
+        </div>
+
+        <div class="comanda-lineas">
+          ${c.lineas.map(l => `
+            <div class="linea-kds">
+              <div class="linea-check ${l.done ? 'checked' : ''}"
+                onclick="toggleLinea('${c.id}', ${l.id})"></div>
+              <div class="linea-info">
+                <div class="linea-nombre ${l.done ? 'done' : ''}">
+                  <span class="linea-qty">${l.qty}x</span>${l.nombre}
+                </div>
+                ${l.mods ? `<div class="linea-mods">${l.mods}</div>` : ''}
+                ${l.nota ? `
+                  <div class="linea-nota">
+                    <span class="linea-nota-icon">!</span>${l.nota}
+                  </div>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="comanda-footer">
+          <button class="btn-accion btn-reimprimir" onclick="reimprimir('${c.id}')">⎙</button>
+          <button class="btn-accion ${btnCls(c.estado)}"
+            onclick="cambiarEstado('${c.id}')">${btnLabel(c.estado)}</button>
+        </div>
+
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  RELOJ + TIMERS  (tick cada segundo)
+// ═══════════════════════════════════════════════
+function tick() {
+  const now = new Date();
+  document.getElementById('reloj').textContent =
+    String(now.getHours()).padStart(2, '0') + ':' +
+    String(now.getMinutes()).padStart(2, '0') + ':' +
+    String(now.getSeconds()).padStart(2, '0');
+
+  document.querySelectorAll('.timer[data-abierta]').forEach(el => {
+    const elapsed = Date.now() - parseInt(el.dataset.abierta);
+    el.textContent = tiempoStr(elapsed);
+    const num = el.closest('.comanda')?.querySelector('.comanda-num')?.textContent;
+    const cmd = comandas.find(c => c.numero === num);
+    el.className = 'timer ' + timerClass(elapsed, cmd?.estado ?? 'pendiente');
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+render();
+tick();
+setInterval(tick, 1000);
+
+/*
+  ── INTEGRACIÓN CON BACKEND ──────────────────────
+  Para conectar con PostgreSQL reemplaza la variable
+  `comandas` por un fetch periódico, por ejemplo:
+
+  async function fetchComandas() {
+    const res = await fetch('/api/kds?destino_id=1', {
+      headers: { Authorization: 'Bearer ' + TOKEN }
+    });
+    const data = await res.json();
+    comandas = data.map(c => ({
+      id:      'C-' + c.id,
+      numero:  '#' + String(c.id).padStart(4, '0'),
+      mesa:    c.mesa_nombre ?? '—',
+      tipo:    c.tipo_servicio,
+      estado:  c.estado,
+      abierta: new Date(c.tiempo_recibido).getTime(),
+      lineas:  c.lineas.map(l => ({
+        id:     l.id,
+        nombre: l.articulo_nombre,
+        qty:    l.cantidad,
+        mods:   l.modificadores,
+        nota:   l.notas_linea ?? '',
+        done:   l.estado === 'lista',
+      }))
+    }));
+    render();
+  }
+
+  setInterval(fetchComandas, 8000);   // polling cada 8 s
+  fetchComandas();                    // carga inicial
+  ─────────────────────────────────────────────── */
+</script>
+</body>
+</html>

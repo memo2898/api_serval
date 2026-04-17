@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ServalPOS — Caja</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #eef0f8;
+  --surface: #ffffff;
+  --surface2: #f4f6fc;
+  --surface3: #e8ecf6;
+  --accent: #00904c;
+  --accent2: #00b860;
+  --text: #1a1b2e;
+  --text-muted: #5f628a;
+  --text-dim: #adb0cc;
+  --border: rgba(80,80,180,0.13);
+  --border-strong: rgba(80,80,180,0.22);
+  --green: #00904c;
+  --orange: #c56200;
+  --yellow: #9e7400;
+  --blue: #1a52cc;
+  --red: #c62828;
+  --radius: 10px;
+  --radius-lg: 16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; }
+
+.screen { display: none; width: 100%; height: 100vh; overflow: hidden; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ── TOAST ── */
+#toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+  padding: 12px 28px; border-radius: 40px; font-size: 14px; font-weight: 600; z-index: 9999;
+  opacity: 0; transition: all 0.25s ease; pointer-events: none; white-space: nowrap; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.error { background: var(--red); color: #fff; }
+#toast.success { background: var(--green); color: #fff; }
+
+/* ── LOGIN ── */
+#screen-login { justify-content: center; align-items: center; background: var(--bg);
+  background-image: radial-gradient(ellipse at 20% 50%, rgba(0,144,76,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 30%, rgba(26,82,204,0.05) 0%, transparent 50%); }
+.login-box { width: 360px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 48px 40px; display: flex; flex-direction: column; gap: 24px;
+  box-shadow: 0 8px 32px rgba(80,80,180,0.10); }
+.login-logo { text-align: center; }
+.login-logo .brand { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700;
+  color: var(--accent); letter-spacing: -1px; }
+.login-logo .tagline { font-size: 12px; color: var(--text-muted); margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-group label { font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+.form-group input { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; color: var(--text); font-size: 15px; font-family: inherit; outline: none;
+  transition: border-color 0.2s; }
+.form-group input:focus { border-color: var(--accent); }
+.btn-login { background: var(--accent); color: #fff; border: none; border-radius: var(--radius);
+  padding: 16px; font-size: 15px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px;
+  transition: opacity 0.2s, transform 0.1s; font-family: inherit; }
+.btn-login:active { transform: scale(0.98); opacity: 0.9; }
+.btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── TOP BAR ── */
+.topbar { display: flex; align-items: center; padding: 0 20px; height: 56px; min-height: 56px;
+  background: var(--surface); border-bottom: 3px solid var(--accent); gap: 12px;
+  box-shadow: 0 1px 4px rgba(80,80,180,0.08); }
+.topbar-brand { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent); font-size: 16px; }
+.topbar-screen { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-muted); padding: 3px 10px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 6px; }
+.topbar-spacer { flex: 1; }
+.topbar-user { font-size: 13px; color: var(--text-muted); }
+.btn-exit { background: transparent; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 14px; color: var(--text-muted); font-size: 13px; cursor: pointer; font-family: inherit;
+  transition: all 0.15s; }
+.btn-exit:active { color: var(--accent); border-color: var(--accent); }
+
+/* ── CAJA LAYOUT ── */
+#screen-caja { background: var(--bg); }
+.caja-layout { display: grid; grid-template-columns: 260px 1fr 340px; flex: 1; overflow: hidden; }
+
+/* ── COLUMNA 1: COLA ── */
+.caja-queue { display: flex; flex-direction: column; overflow: hidden;
+  border-right: 1px solid var(--border); background: var(--surface); }
+.queue-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.queue-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text-muted); }
+.queue-count { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.queue-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.queue-card { padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface2); cursor: pointer; transition: all 0.15s; }
+.queue-card:active { transform: scale(0.98); }
+.queue-card.selected { background: rgba(0,144,76,0.08); border-color: rgba(0,144,76,0.38); }
+.queue-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.queue-mesa { font-size: 15px; font-weight: 700; }
+.queue-total { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--green); }
+.queue-meta { font-size: 11px; color: var(--text-muted); }
+.queue-timer { display: inline-flex; align-items: center; gap: 4px; font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; margin-left: 6px; }
+.queue-timer.normal { background: rgba(0,144,76,0.10); color: var(--green); }
+.queue-timer.warn { background: rgba(197,98,0,0.12); color: var(--orange); }
+.queue-timer.late { background: rgba(198,40,40,0.12); color: var(--red); }
+.queue-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; color: var(--text-dim); font-size: 13px; padding: 24px; text-align: center; }
+
+/* ── COLUMNA 2: DETALLE ── */
+.caja-detalle { display: flex; flex-direction: column; overflow: hidden;
+  border-right: 1px solid var(--border); background: var(--surface); }
+.detalle-empty { flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; color: var(--text-dim); font-size: 14px; }
+.detalle-header { padding: 14px 20px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.detalle-orden-num { font-family: 'JetBrains Mono', monospace; font-size: 14px;
+  color: var(--accent); font-weight: 700; }
+.detalle-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.cuentas-tabs { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border);
+  overflow-x: auto; flex-shrink: 0; }
+.cuenta-tab { padding: 8px 14px; border-radius: 40px; border: 1px solid var(--border);
+  cursor: pointer; background: transparent; color: var(--text-muted); font-size: 12px;
+  font-family: inherit; font-weight: 600; white-space: nowrap; transition: all 0.15s; }
+.cuenta-tab.active { background: rgba(197,98,0,0.12); border-color: var(--orange); color: var(--orange); }
+.cuenta-tab.pagada { background: rgba(0,144,76,0.10); border-color: rgba(0,144,76,0.28); color: var(--green); opacity: 0.6; pointer-events: none; }
+.cobro-lineas { flex: 1; overflow-y: auto; padding: 8px 0; }
+.cobro-linea { display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 20px; font-size: 13px; border-bottom: 1px solid var(--border); }
+.cobro-linea:last-child { border-bottom: none; }
+.cobro-linea.dim { opacity: 0.25; }
+.cl-nombre { color: var(--text); flex: 1; }
+.cl-precio { font-family: 'JetBrains Mono', monospace; color: var(--text-muted); }
+.cuenta-badge { display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px; border-radius: 11px; padding: 0 5px;
+  font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  cursor: default; flex-shrink: 0; margin-right: 8px; }
+.cuenta-badge.c1 { background: rgba(26,82,204,0.12); color: var(--blue); border: 1px solid rgba(26,82,204,0.30); }
+.cuenta-badge.c2 { background: rgba(197,98,0,0.12); color: var(--orange); border: 1px solid rgba(197,98,0,0.28); }
+.cuenta-badge.c3 { background: rgba(0,144,76,0.12); color: var(--green); border: 1px solid rgba(0,144,76,0.28); }
+.cuenta-badge.cX { background: rgba(198,40,40,0.12); color: var(--red); border: 1px solid rgba(198,40,40,0.28); }
+.cobro-totales { border-top: 2px solid var(--border); padding: 12px 20px; flex-shrink: 0; }
+.cobro-total-row { display: flex; justify-content: space-between; padding: 3px 0;
+  font-size: 13px; color: var(--text-muted); }
+.cobro-total-row.grand { font-size: 20px; font-weight: 700; color: var(--text);
+  padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
+.cobro-total-val { font-family: 'JetBrains Mono', monospace; }
+
+/* ── COLUMNA 3: PAGO ── */
+.caja-pago { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.pago-header { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text-muted); padding: 14px 20px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.formas-pago-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px 16px; flex-shrink: 0; }
+.forma-btn { padding: 12px 10px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.forma-btn.selected { border-color: var(--accent); background: rgba(0,144,76,0.09); color: var(--accent); }
+.forma-icono { font-size: 20px; }
+.monto-section { padding: 4px 16px 10px; flex-shrink: 0; }
+.monto-label { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+.monto-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 16px; color: var(--text); font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  text-align: right; outline: none; transition: border-color 0.2s; }
+.monto-input:focus { border-color: var(--accent); }
+.btn-agregar-pago { margin: 0 16px 10px; padding: 11px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all 0.15s; text-align: center; flex-shrink: 0; }
+.btn-agregar-pago:active { background: var(--surface3); }
+.pagos-list { flex: 1; overflow-y: auto; padding: 4px 16px; display: flex; flex-direction: column; gap: 6px; }
+.pago-item { display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.pago-nombre { font-size: 13px; font-weight: 600; }
+.pago-monto { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--green); font-weight: 700; }
+.cobro-resumen { padding: 10px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.resumen-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+.resumen-row .label { color: var(--text-muted); }
+.resumen-row .val { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+.resumen-row .val.pendiente { color: var(--orange); }
+.resumen-row .val.cambio { color: var(--green); }
+.btn-confirmar { margin: 10px 16px 16px; padding: 16px; background: var(--green); border: none;
+  border-radius: var(--radius); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+  font-family: inherit; transition: opacity 0.15s; letter-spacing: 0.3px; flex-shrink: 0; }
+.btn-confirmar:disabled { opacity: 0.3; cursor: not-allowed; background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+.btn-confirmar:not(:disabled):active { opacity: 0.85; }
+
+/* ── MODAL CAMBIO ── */
+.cambio-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000;
+  display: flex; align-items: center; justify-content: center; padding: 20px; }
+.cambio-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 40px 32px; text-align: center; max-width: 320px; width: 100%; }
+.cambio-icon { font-size: 48px; margin-bottom: 16px; }
+.cambio-title { font-size: 14px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px; }
+.cambio-amount { font-family: 'JetBrains Mono', monospace; font-size: 42px; font-weight: 700; color: var(--green); }
+.btn-cerrar-cambio { margin-top: 28px; width: 100%; padding: 16px; background: var(--accent); border: none;
+  border-radius: var(--radius); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(80,80,180,0.20); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(80,80,180,0.32); }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="screen-login" class="screen active">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="brand">ServalPOS</div>
+      <div class="tagline">Módulo de Caja</div>
+    </div>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input type="text" id="login-email" placeholder="usuario" value="admin" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>PIN</label>
+      <input type="password" id="login-password" placeholder="••••" value="1234" maxlength="10" inputmode="numeric">
+    </div>
+    <button class="btn-login" id="btn-entrar" onclick="doLogin()">ENTRAR A CAJA</button>
+  </div>
+</div>
+
+<!-- ══════════════ CAJA ══════════════ -->
+<div id="screen-caja" class="screen">
+  <div class="topbar">
+    <span class="topbar-brand">ServalPOS</span>
+    <span class="topbar-screen">Caja</span>
+    <div class="topbar-spacer"></div>
+    <span class="topbar-user" id="topbar-user">—</span>
+    <button class="btn-exit" onclick="doLogout()">Salir</button>
+  </div>
+
+  <div class="caja-layout">
+
+    <!-- Columna 1: Cola de órdenes -->
+    <div class="caja-queue">
+      <div class="queue-header">
+        <div class="queue-title">Por cobrar</div>
+        <div class="queue-count" id="queue-count">Sin órdenes</div>
+      </div>
+      <div class="queue-list" id="queue-list"></div>
+      <div class="queue-empty" id="queue-empty">
+        <div style="font-size:40px;opacity:0.25">💳</div>
+        <div>Sin órdenes pendientes</div>
+        <div style="font-size:11px;opacity:0.6;margin-top:4px">Las órdenes aparecerán aquí cuando el camarero pida la cuenta</div>
+      </div>
+    </div>
+
+    <!-- Columna 2: Detalle de orden -->
+    <div class="caja-detalle" id="caja-detalle">
+      <div class="detalle-empty" id="detalle-empty">
+        <div style="font-size:48px;opacity:0.18">🧾</div>
+        <div>Selecciona una orden</div>
+      </div>
+      <div id="detalle-content" style="display:none;flex:1;flex-direction:column;overflow:hidden;display:none">
+        <div class="detalle-header">
+          <div class="detalle-orden-num" id="detalle-num">ORDEN #—</div>
+          <div class="detalle-meta" id="detalle-meta">—</div>
+        </div>
+        <div id="cuentas-tabs" style="display:none" class="cuentas-tabs"></div>
+        <div class="cobro-lineas" id="cobro-lineas"></div>
+        <div class="cobro-totales" id="cobro-totales"></div>
+      </div>
+    </div>
+
+    <!-- Columna 3: Pago -->
+    <div class="caja-pago" id="caja-pago-col">
+      <div class="detalle-empty" id="pago-empty">
+        <div style="font-size:40px;opacity:0.18">💵</div>
+        <div style="font-size:13px">Selecciona una orden para cobrar</div>
+      </div>
+      <div id="pago-content" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+        <div class="pago-header">Formas de pago</div>
+        <div class="formas-pago-grid" id="formas-pago-grid"></div>
+        <div class="monto-section">
+          <div class="monto-label">Monto recibido</div>
+          <input type="number" class="monto-input" id="monto-pago" placeholder="0.00">
+        </div>
+        <button class="btn-agregar-pago" onclick="agregarPago()">+ Agregar pago</button>
+        <div class="pagos-list" id="pagos-list"></div>
+        <div class="cobro-resumen" id="cobro-resumen"></div>
+        <button class="btn-confirmar" id="btn-confirmar" onclick="confirmarCobro()">✅ Confirmar cobro</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal cambio -->
+<div id="modal-cambio" class="cambio-modal" style="display:none">
+  <div class="cambio-box">
+    <div class="cambio-icon">💵</div>
+    <div class="cambio-title">Cambio a devolver</div>
+    <div class="cambio-amount" id="cambio-amount">$0.00</div>
+    <button class="btn-cerrar-cambio" onclick="finalizarCobro()">Cerrar y finalizar</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  DATOS DE DEMO
+// ═══════════════════════════════════════════════
+const DEMO = {
+  token: 'demo_jwt_token_123',
+  user: { id: 2, nombre: 'María López', rol: 'cajero' },
+  formasPago: [
+    { id: 1, nombre: 'Efectivo', icono: '💵' },
+    { id: 2, nombre: 'Tarjeta', icono: '💳' },
+    { id: 3, nombre: 'Transferencia', icono: '📱' },
+    { id: 4, nombre: 'Otro', icono: '🔖' },
+  ],
+};
+
+// ═══════════════════════════════════════════════
+//  ESTADO
+// ═══════════════════════════════════════════════
+let state = {
+  token: null, user: null,
+  queue: [],
+  // Ticket seleccionado
+  ticketId: null,
+  mesaId: null,
+  mesaLabel: '',
+  orden: null,
+  lineas: [],
+  numComensales: 1,
+  splitMode: false,
+  numCuentas: 1,
+  // Cobro
+  formasPago: [],
+  formaSeleccionada: null,
+  pagos: [],
+  cuentaActivaCobro: 1,
+  cuentasCobradas: new Set(),
+};
+
+// ═══════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════
+function fmt(num) {
+  return '$' + Number(num).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function toast(msg, tipo = 'error') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + tipo;
+  setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+
+function tiempoDesde(ts) {
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1) return '< 1 min';
+  return mins + ' min';
+}
+
+function timerClass(ts) {
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins >= 20) return 'late';
+  if (mins >= 10) return 'warn';
+  return 'normal';
+}
+
+function getTotalCuenta(n) {
+  const sub = state.lineas.filter(l => (l.cuenta_num || 1) === n)
+    .reduce((s, l) => s + Number(l.subtotal_linea), 0);
+  const imp = Math.round(sub * 0.18);
+  const prop = Math.round(sub * 0.10);
+  return { subtotal: sub, impuestos: imp, propina: prop, total: sub + imp + prop };
+}
+
+// ═══════════════════════════════════════════════
+//  LOGIN / LOGOUT
+// ═══════════════════════════════════════════════
+function doLogin() {
+  const username = document.getElementById('login-email').value.trim();
+  const pin = document.getElementById('login-password').value.trim();
+  const btn = document.getElementById('btn-entrar');
+  if (!username || !pin) { toast('Ingresa usuario y PIN'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Conectando…';
+  setTimeout(() => {
+    state.token = DEMO.token;
+    state.user = DEMO.user;
+    localStorage.setItem('pos_token', state.token);
+    localStorage.setItem('pos_user', JSON.stringify(state.user));
+    btn.disabled = false;
+    btn.textContent = 'ENTRAR A CAJA';
+    document.getElementById('topbar-user').textContent = state.user.nombre;
+    loadCaja();
+  }, 600);
+}
+
+function doLogout() {
+  localStorage.removeItem('pos_token');
+  localStorage.removeItem('pos_user');
+  state.token = null; state.user = null;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-login').classList.add('active');
+}
+
+// ═══════════════════════════════════════════════
+//  COLA DE ÓRDENES
+// ═══════════════════════════════════════════════
+function loadCaja() {
+  state.formasPago = [...DEMO.formasPago];
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-caja').classList.add('active');
+  loadQueue();
+}
+
+function loadQueue() {
+  try {
+    state.queue = JSON.parse(localStorage.getItem('pos_caja_queue') || '[]');
+  } catch(e) {
+    state.queue = [];
+  }
+  renderQueue();
+}
+
+function renderQueue() {
+  const listEl = document.getElementById('queue-list');
+  const emptyEl = document.getElementById('queue-empty');
+  const countEl = document.getElementById('queue-count');
+
+  if (!state.queue.length) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'flex';
+    countEl.textContent = 'Sin órdenes';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  countEl.textContent = state.queue.length + (state.queue.length === 1 ? ' orden' : ' órdenes');
+
+  listEl.innerHTML = state.queue.map(t => {
+    const total = t.orden?.total ?? 0;
+    const items = t.lineas?.length ?? 0;
+    const tc = timerClass(t.timestamp);
+    const tLabel = tiempoDesde(t.timestamp);
+    const isSelected = t.mesaId === state.mesaId;
+    return `
+      <div class="queue-card ${isSelected ? 'selected' : ''}" onclick="selectTicket(${t.mesaId})">
+        <div class="queue-card-top">
+          <span class="queue-mesa">Mesa ${t.mesaLabel}</span>
+          <span class="queue-total">${fmt(total)}</span>
+        </div>
+        <div class="queue-meta">
+          ${t.numComensales || 1} comensal(es) · ${items} artículo(s)
+          <span class="queue-timer ${tc}">⏱ ${tLabel}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectTicket(mesaId) {
+  const ticket = state.queue.find(t => t.mesaId === mesaId);
+  if (!ticket) return;
+
+  state.ticketId = ticket.id;
+  state.mesaId = ticket.mesaId;
+  state.mesaLabel = ticket.mesaLabel;
+  state.orden = { ...ticket.orden };
+  state.lineas = ticket.lineas.map(l => ({...l}));
+  state.numComensales = ticket.numComensales || 1;
+  state.splitMode = ticket.splitMode || false;
+  state.numCuentas = ticket.numCuentas || 1;
+  state.formaSeleccionada = null;
+  state.pagos = [];
+  state.cuentaActivaCobro = 1;
+  state.cuentasCobradas = new Set();
+
+  renderQueue(); // update selected highlight
+  renderDetalleHeader();
+  renderCuentasTabs();
+  renderCobroLineas();
+  renderCobroTotales();
+  renderFormasPago();
+  renderCobro();
+  setMontoPago();
+
+  // Mostrar contenido
+  document.getElementById('detalle-empty').style.display = 'none';
+  document.getElementById('detalle-content').style.display = 'flex';
+  document.getElementById('pago-empty').style.display = 'none';
+  document.getElementById('pago-content').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER DETALLE
+// ═══════════════════════════════════════════════
+function renderDetalleHeader() {
+  const orden = state.orden;
+  document.getElementById('detalle-num').textContent =
+    'ORDEN #' + (orden?.numero ?? String(state.ticketId).padStart(4, '0'));
+  document.getElementById('detalle-meta').textContent =
+    'Mesa ' + state.mesaLabel + ' · ' + state.numComensales +
+    (state.numComensales === 1 ? ' comensal' : ' comensales') +
+    (state.splitMode ? ' · ' + state.numCuentas + ' cuentas' : '');
+}
+
+function renderCuentasTabs() {
+  const el = document.getElementById('cuentas-tabs');
+  if (!state.splitMode || state.numCuentas <= 1) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'flex';
+  el.innerHTML = Array.from({ length: state.numCuentas }, (_, i) => i + 1).map(n => {
+    const { total } = getTotalCuenta(n);
+    const pagada = state.cuentasCobradas.has(n);
+    const activa = n === state.cuentaActivaCobro && !pagada;
+    return `<button class="cuenta-tab ${activa ? 'active' : ''} ${pagada ? 'pagada' : ''}"
+      onclick="selectCuenta(${n})">
+      ${pagada ? '✓ ' : ''}Cuenta ${n} · ${fmt(total)}
+    </button>`;
+  }).join('');
+}
+
+function renderCobroLineas() {
+  const el = document.getElementById('cobro-lineas');
+  el.innerHTML = state.lineas.map(l => {
+    const cn = l.cuenta_num || 1;
+    const dim = state.splitMode && cn !== state.cuentaActivaCobro;
+    const badgeCls = cn <= 3 ? 'c' + cn : 'cX';
+    const badge = state.splitMode
+      ? `<span class="cuenta-badge ${badgeCls}">C${cn}</span>` : '';
+    return `
+      <div class="cobro-linea ${dim ? 'dim' : ''}">
+        ${badge}
+        <span class="cl-nombre">${l.cantidad}x ${l.nombre_articulo}</span>
+        <span class="cl-precio">${fmt(l.subtotal_linea)}</span>
+      </div>`;
+  }).join('');
+}
+
+function renderCobroTotales() {
+  const totales = state.splitMode
+    ? getTotalCuenta(state.cuentaActivaCobro)
+    : { subtotal: state.orden?.subtotal ?? 0, impuestos: state.orden?.impuestos ?? 0,
+        propina: state.orden?.propina ?? 0, total: state.orden?.total ?? 0 };
+  const label = state.splitMode ? `Cuenta ${state.cuentaActivaCobro}` : 'TOTAL';
+  document.getElementById('cobro-totales').innerHTML = `
+    <div class="cobro-total-row"><span>Subtotal</span><span class="cobro-total-val">${fmt(totales.subtotal)}</span></div>
+    <div class="cobro-total-row"><span>ITBIS 18%</span><span class="cobro-total-val">${fmt(totales.impuestos)}</span></div>
+    <div class="cobro-total-row"><span>Propina 10%</span><span class="cobro-total-val">${fmt(totales.propina)}</span></div>
+    <div class="cobro-total-row grand"><span>${label}</span><span class="cobro-total-val">${fmt(totales.total)}</span></div>
+  `;
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER PAGO
+// ═══════════════════════════════════════════════
+function renderFormasPago() {
+  const el = document.getElementById('formas-pago-grid');
+  el.innerHTML = state.formasPago.map(f => `
+    <button class="forma-btn ${state.formaSeleccionada?.id === f.id ? 'selected' : ''}"
+      onclick="selectForma(${f.id})">
+      <span class="forma-icono">${f.icono}</span>
+      <span>${f.nombre}</span>
+    </button>
+  `).join('');
+}
+
+function selectForma(id) {
+  state.formaSeleccionada = state.formasPago.find(f => f.id === id) ?? null;
+  renderFormasPago();
+}
+
+function setMontoPago() {
+  const total = state.splitMode
+    ? getTotalCuenta(state.cuentaActivaCobro).total
+    : (state.orden?.total ?? 0);
+  document.getElementById('monto-pago').value = total;
+}
+
+function agregarPago() {
+  if (!state.formaSeleccionada) { toast('Selecciona una forma de pago'); return; }
+  const monto = parseFloat(document.getElementById('monto-pago').value);
+  if (!monto || monto <= 0) { toast('Ingresa un monto válido'); return; }
+  state.pagos.push({
+    forma_pago_id: state.formaSeleccionada.id,
+    nombre: state.formaSeleccionada.nombre,
+    icono: state.formaSeleccionada.icono,
+    monto,
+    cuenta_num: state.cuentaActivaCobro,
+  });
+  renderCobro();
+}
+
+function renderCobro() {
+  const pagosActivos = state.splitMode
+    ? state.pagos.filter(p => p.cuenta_num === state.cuentaActivaCobro)
+    : state.pagos;
+
+  document.getElementById('pagos-list').innerHTML = pagosActivos.map(p => `
+    <div class="pago-item">
+      <span class="pago-nombre">${p.icono} ${p.nombre}</span>
+      <span class="pago-monto">${fmt(p.monto)}</span>
+    </div>
+  `).join('');
+
+  const totalActivo = state.splitMode
+    ? getTotalCuenta(state.cuentaActivaCobro).total
+    : (state.orden?.total ?? 0);
+  const totalPagado = pagosActivos.reduce((s, p) => s + p.monto, 0);
+  const pendiente = Math.max(0, totalActivo - totalPagado);
+  const cambio = Math.max(0, totalPagado - totalActivo);
+
+  const faltanCuentas = state.splitMode
+    ? Array.from({ length: state.numCuentas }, (_, i) => i + 1)
+        .filter(n => !state.cuentasCobradas.has(n)).length
+    : 1;
+  const btnLabel = state.splitMode && faltanCuentas > 1
+    ? `✓ Confirmar Cuenta ${state.cuentaActivaCobro}`
+    : '✅ Confirmar cobro';
+
+  document.getElementById('cobro-resumen').innerHTML = `
+    <div class="resumen-row"><span class="label">Total pagado</span><span class="val">${fmt(totalPagado)}</span></div>
+    <div class="resumen-row"><span class="label">Pendiente</span><span class="val pendiente">${fmt(pendiente)}</span></div>
+    <div class="resumen-row"><span class="label">Cambio</span><span class="val cambio">${fmt(cambio)}</span></div>
+  `;
+
+  const btn = document.getElementById('btn-confirmar');
+  btn.disabled = pendiente > 0;
+  btn.textContent = btnLabel;
+}
+
+function selectCuenta(n) {
+  state.cuentaActivaCobro = n;
+  renderCuentasTabs();
+  renderCobroLineas();
+  renderCobroTotales();
+  renderCobro();
+  setMontoPago();
+}
+
+// ═══════════════════════════════════════════════
+//  CONFIRMAR COBRO
+// ═══════════════════════════════════════════════
+function confirmarCobro() {
+  if (state.splitMode) {
+    state.cuentasCobradas.add(state.cuentaActivaCobro);
+    toast(`Cuenta ${state.cuentaActivaCobro} pagada ✓`, 'success');
+    const siguiente = Array.from({ length: state.numCuentas }, (_, i) => i + 1)
+      .find(n => !state.cuentasCobradas.has(n));
+    if (siguiente) {
+      selectCuenta(siguiente);
+      return;
+    }
+  }
+
+  // Calcular cambio total
+  const totalPagado = state.pagos.reduce((s, p) => s + p.monto, 0);
+  const totalOrden = state.orden?.total ?? 0;
+  const cambio = Math.max(0, totalPagado - totalOrden);
+
+  if (cambio > 0) {
+    document.getElementById('cambio-amount').textContent = fmt(cambio);
+    document.getElementById('modal-cambio').style.display = 'flex';
+  } else {
+    finalizarCobro();
+  }
+}
+
+function finalizarCobro() {
+  document.getElementById('modal-cambio').style.display = 'none';
+
+  // Quitar orden de la cola
+  try {
+    const queue = JSON.parse(localStorage.getItem('pos_caja_queue') || '[]');
+    const newQueue = queue.filter(t => t.mesaId !== state.mesaId);
+    localStorage.setItem('pos_caja_queue', JSON.stringify(newQueue));
+  } catch(e) {}
+
+  // Notificar a mesas que la mesa quedó libre
+  try {
+    const updates = [{ mesaId: state.mesaId, estado: 'libre', timestamp: Date.now() }];
+    localStorage.setItem('pos_mesa_updates', JSON.stringify(updates));
+    new BroadcastChannel('pos_mesas').postMessage({ tipo: 'mesa_liberada', mesaId: state.mesaId });
+  } catch(e) {}
+
+  toast('Cobro registrado ✓', 'success');
+
+  // Reset estado
+  state.ticketId = null; state.mesaId = null; state.mesaLabel = '';
+  state.orden = null; state.lineas = [];
+  state.splitMode = false; state.numCuentas = 1;
+  state.formaSeleccionada = null; state.pagos = [];
+  state.cuentaActivaCobro = 1; state.cuentasCobradas = new Set();
+
+  // Volver a estado vacío
+  document.getElementById('detalle-content').style.display = 'none';
+  document.getElementById('detalle-empty').style.display = 'flex';
+  document.getElementById('pago-content').style.display = 'none';
+  document.getElementById('pago-empty').style.display = 'flex';
+
+  setTimeout(() => loadQueue(), 400);
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+(function init() {
+  const token = localStorage.getItem('pos_token');
+  const user = JSON.parse(localStorage.getItem('pos_user') || 'null');
+  if (token && user) {
+    state.token = token;
+    state.user = user;
+    document.getElementById('topbar-user').textContent = user.nombre;
+    loadCaja();
+  }
+
+  document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  // Escuchar nuevas órdenes desde mesas
+  window.addEventListener('storage', e => {
+    if (e.key === 'pos_caja_queue') loadQueue();
+  });
+  try {
+    const bc = new BroadcastChannel('pos_caja');
+    bc.onmessage = e => { if (e.data?.tipo === 'nueva_orden') loadQueue(); };
+  } catch(e) {}
+
+  // Polling cada 5s como respaldo
+  setInterval(loadQueue, 5000);
+})();
+</script>
+</body>
+</html>

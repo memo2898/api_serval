@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ServalPOS</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #eef0f8;
+  --surface: #ffffff;
+  --surface2: #f4f6fc;
+  --surface3: #e8ecf6;
+  --accent: #d63050;
+  --accent2: #f04f5a;
+  --text: #1a1b2e;
+  --text-muted: #5f628a;
+  --text-dim: #adb0cc;
+  --border: rgba(80,80,180,0.13);
+  --border-strong: rgba(80,80,180,0.22);
+  --green: #00904c;
+  --orange: #c56200;
+  --yellow: #9e7400;
+  --blue: #1a52cc;
+  --red: #c62828;
+  --radius: 10px;
+  --radius-lg: 16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; }
+
+.screen { display: none; width: 100%; height: 100vh; overflow: hidden; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ── TOAST ── */
+#toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+  padding: 12px 28px; border-radius: 40px; font-size: 14px; font-weight: 600; z-index: 9999;
+  opacity: 0; transition: all 0.25s ease; pointer-events: none; white-space: nowrap; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.error { background: var(--red); color: #fff; }
+#toast.success { background: var(--green); color: #000; }
+
+/* ── LOGIN ── */
+#screen-login { justify-content: center; align-items: center; background: var(--bg);
+  background-image: radial-gradient(ellipse at 20% 50%, rgba(214,48,80,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 30%, rgba(26,82,204,0.05) 0%, transparent 50%); }
+.login-box { width: 360px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 48px 40px; display: flex; flex-direction: column; gap: 24px;
+  box-shadow: 0 8px 32px rgba(80,80,180,0.10); }
+.login-logo { text-align: center; }
+.login-logo .brand { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700;
+  color: var(--accent); letter-spacing: -1px; }
+.login-logo .tagline { font-size: 12px; color: var(--text-muted); margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-group label { font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+.form-group input { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; color: var(--text); font-size: 15px; font-family: inherit; outline: none;
+  transition: border-color 0.2s; }
+.form-group input:focus { border-color: var(--accent); }
+.btn-login { background: var(--accent); color: #fff; border: none; border-radius: var(--radius);
+  padding: 16px; font-size: 15px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px;
+  transition: opacity 0.2s, transform 0.1s; font-family: inherit; }
+.btn-login:active { transform: scale(0.98); opacity: 0.9; }
+.btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── TOP BAR ── */
+.topbar { display: flex; align-items: center; padding: 0 20px; height: 56px; min-height: 56px;
+  background: var(--surface); border-bottom: 1px solid var(--border); gap: 16px;
+  box-shadow: 0 1px 4px rgba(80,80,180,0.08); }
+.topbar-brand { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent); font-size: 16px; }
+.topbar-spacer { flex: 1; }
+.topbar-user { font-size: 13px; color: var(--text-muted); }
+.topbar-title { font-size: 15px; font-weight: 600; }
+.btn-back { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 14px; color: var(--text); font-size: 13px; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; gap: 6px; transition: background 0.15s; white-space: nowrap; }
+.btn-back:active { background: var(--surface3); }
+.btn-exit { background: transparent; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 14px; color: var(--text-muted); font-size: 13px; cursor: pointer; font-family: inherit;
+  transition: all 0.15s; }
+.btn-exit:active { color: var(--accent); border-color: var(--accent); }
+
+/* ── MESAS ── */
+#screen-mesas { background: var(--bg); }
+.zonas-tabs { display: flex; gap: 8px; padding: 12px 20px; background: var(--surface);
+  border-bottom: 1px solid var(--border); overflow-x: auto; }
+.zona-tab { padding: 10px 20px; border-radius: 40px; border: 1px solid var(--border);
+  cursor: pointer; background: transparent; color: var(--text-muted); font-size: 13px;
+  font-family: inherit; font-weight: 500; white-space: nowrap; transition: all 0.15s; }
+.zona-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+
+/* Floor plan */
+.mesas-plano-wrap { flex: 1; overflow-y: auto; padding: 14px 14px 6px; }
+.mesas-plano { position: relative; width: 100%; padding-bottom: 66%;
+  background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);
+  overflow: hidden; }
+.mesas-plano-inner { position: absolute; inset: 0; }
+
+/* Mesa card on floor plan */
+.mesa-fp { position: absolute; width: 94px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  transform: translate(-50%, -50%); transition: transform 0.15s; user-select: none; }
+.mesa-fp:active { transform: translate(-50%, -50%) scale(0.9); }
+
+/* Chair dots */
+.sillas-top, .sillas-bottom { display: flex; gap: 5px; justify-content: center; }
+.silla { width: 13px; height: 7px; border-radius: 3px; transition: background 0.2s, border-color 0.2s; }
+
+/* Table surface */
+.mesa-superficie { width: 70px; height: 50px; border-radius: 10px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px; border: 2px solid transparent;
+  transition: all 0.2s; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.07); }
+.mesa-fp-nombre { font-size: 13px; font-weight: 700; line-height: 1; }
+.mesa-fp-personas { font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+.mesa-fp-estado { font-size: 9px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; opacity: 0.75; }
+
+/* Estado coloring */
+.mesa-libre .mesa-superficie { background: rgba(0,144,76,0.09); border-color: rgba(0,144,76,0.38); color: var(--green); }
+.mesa-libre .silla { background: rgba(0,144,76,0.16); border: 1px solid rgba(0,144,76,0.30); }
+.mesa-libre .silla-ocup { background: var(--green) !important; border-color: var(--green) !important; opacity: 0.9; }
+
+.mesa-ocupada .mesa-superficie { background: rgba(198,40,40,0.08); border-color: rgba(198,40,40,0.38); color: var(--red); }
+.mesa-ocupada .silla { background: rgba(198,40,40,0.15); border: 1px solid rgba(198,40,40,0.28); }
+.mesa-ocupada .silla-ocup { background: var(--red) !important; border-color: var(--red) !important; opacity: 0.9; }
+
+.mesa-por_cobrar .mesa-superficie { background: rgba(197,98,0,0.09); border-color: rgba(197,98,0,0.38); color: var(--orange); }
+.mesa-por_cobrar .silla { background: rgba(197,98,0,0.15); border: 1px solid rgba(197,98,0,0.28); }
+.mesa-por_cobrar .silla-ocup { background: var(--orange) !important; border-color: var(--orange) !important; opacity: 0.9; }
+
+.mesa-reservada .mesa-superficie { background: rgba(26,82,204,0.08); border-color: rgba(26,82,204,0.38); color: var(--blue); }
+.mesa-reservada .silla { background: rgba(26,82,204,0.15); border: 1px solid rgba(26,82,204,0.28); }
+.mesa-reservada .silla-ocup { background: var(--blue) !important; border-color: var(--blue) !important; opacity: 0.9; }
+
+.mesa-bloqueada .mesa-superficie { background: rgba(100,100,120,0.08); border-color: rgba(100,100,120,0.25); color: var(--text-muted); }
+.mesa-bloqueada .silla { background: rgba(100,100,120,0.12); border: 1px solid rgba(100,100,120,0.20); }
+
+/* Merge mode */
+.mesa-fp.mesa-merge-principal .mesa-superficie { border-color: var(--orange) !important; box-shadow: 0 0 0 3px rgba(197,98,0,0.22); }
+.mesa-fp.mesa-merge-disponible .mesa-superficie { animation: pulse-verde 1.4s infinite; }
+.mesa-fp.mesa-merge-seleccionada .mesa-superficie { background: rgba(197,98,0,0.12) !important; border-color: var(--orange) !important; color: var(--orange) !important; }
+.mesa-fp.mesa-merge-dim { opacity: 0.15; pointer-events: none; }
+@keyframes pulse-verde { 0%,100% { box-shadow: 0 0 0 0 rgba(0,144,76,0.45); } 60% { box-shadow: 0 0 0 8px rgba(0,144,76,0); } }
+.mesa-union-indicator { font-size: 9px; font-weight: 700; position: absolute; top: -9px; right: -9px;
+  background: var(--surface2); border: 1px solid rgba(197,98,0,0.35); border-radius: 4px;
+  padding: 1px 4px; color: var(--orange); white-space: nowrap; z-index: 1; }
+
+/* merge confirm bar */
+.merge-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface);
+  border-top: 2px solid var(--orange); padding: 12px 20px; display: flex;
+  align-items: center; gap: 12px; z-index: 500; }
+.merge-bar-label { flex: 1; font-size: 13px; color: var(--text-muted); }
+
+/* modal unir TPV */
+.unir-mesas-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; padding: 16px 24px; }
+.unir-mesa-btn { aspect-ratio: 1; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all 0.15s; display:flex;
+  flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+.unir-mesa-btn.selected { background: rgba(197,98,0,0.10); border-color: var(--orange); color: var(--orange); }
+.unir-mesa-nombre { font-size: 16px; font-weight: 700; }
+.unir-mesa-sub { font-size: 10px; opacity: 0.7; }
+/* accion mesa mini-menu */
+.accion-menu { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+
+/* Leyenda */
+.mesas-leyenda { display: flex; gap: 16px; padding: 9px 16px; background: var(--surface);
+  border-top: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; }
+.leyenda-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.leyenda-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.leyenda-dot.libre { background: rgba(0,144,76,0.28); border: 1px solid rgba(0,144,76,0.55); }
+.leyenda-dot.ocupada { background: rgba(198,40,40,0.25); border: 1px solid rgba(198,40,40,0.52); }
+.leyenda-dot.por_cobrar { background: rgba(197,98,0,0.28); border: 1px solid rgba(197,98,0,0.55); }
+.leyenda-dot.reservada { background: rgba(26,82,204,0.25); border: 1px solid rgba(26,82,204,0.52); }
+.leyenda-dot.bloqueada { background: rgba(100,100,120,0.28); border: 1px solid rgba(100,100,120,0.50); }
+
+/* ── TPV ── */
+#screen-tpv { background: var(--bg); }
+.tpv-body { display: grid; grid-template-columns: 1fr 360px; flex: 1; overflow: hidden; }
+.tpv-left { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); }
+.familias-tabs { display: flex; gap: 8px; padding: 10px 14px; background: var(--surface);
+  border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; }
+.familia-tab { padding: 8px 16px; border-radius: 40px; border: 1px solid var(--border);
+  cursor: pointer; background: transparent; color: var(--text-muted); font-size: 13px;
+  font-family: inherit; font-weight: 500; white-space: nowrap; transition: all 0.15s; }
+.familia-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(214,48,80,0.08); font-weight: 600; }
+.articulos-grid { display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; padding: 14px; overflow-y: auto; flex: 1; align-content: start; }
+.articulo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 12px; cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; gap: 8px; }
+.articulo-card:active { background: var(--surface3); border-color: var(--accent); transform: scale(0.97); }
+.articulo-imagen { width: 100%; aspect-ratio: 1; background: var(--surface2); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 28px; overflow: hidden; }
+.articulo-imagen img { width: 100%; height: 100%; object-fit: cover; }
+.articulo-nombre { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.articulo-precio { font-size: 14px; color: var(--accent); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+/* TPV derecha */
+.tpv-right { display: flex; flex-direction: column; background: var(--surface); overflow: hidden; }
+.orden-header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.orden-header-num { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--accent); font-weight: 700; }
+.orden-header-info { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.orden-lineas { flex: 1; overflow-y: auto; padding: 8px 0; }
+.orden-linea { padding: 10px 16px; border-bottom: 1px solid var(--border); cursor: pointer;
+  transition: background 0.15s; }
+.orden-linea:hover { background: var(--surface2); }
+.orden-linea.selected { background: rgba(214,48,80,0.08); border-left: 2px solid var(--accent); }
+.linea-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.linea-nombre { font-size: 13px; font-weight: 500; flex: 1; }
+.linea-precio { font-size: 13px; font-weight: 700; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+.linea-mod { font-size: 11px; color: var(--text-muted); margin-top: 2px; padding-left: 20px; }
+.linea-controls { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.qty-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface3); color: var(--text); cursor: pointer; font-size: 16px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s; font-family: inherit; }
+.qty-btn:active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.qty-num { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; min-width: 24px; text-align: center; }
+.qty-btn.delete { color: var(--red); border-color: rgba(198,40,40,0.28); }
+.qty-btn.delete:active { background: var(--red); color: #fff; }
+.orden-totales { border-top: 1px solid var(--border); padding: 12px 16px; background: var(--surface); }
+.total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; color: var(--text-muted); }
+.total-row.grand { font-size: 18px; font-weight: 700; color: var(--text); padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
+.total-val { font-family: 'JetBrains Mono', monospace; }
+.orden-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.btn-cocina { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all 0.15s; }
+.btn-cocina:active { background: var(--surface3); }
+.btn-cobrar { background: var(--accent); border: none; border-radius: var(--radius);
+  padding: 14px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+  font-family: inherit; transition: opacity 0.15s; }
+.btn-cobrar:active { opacity: 0.85; }
+.nota-section { padding: 8px 16px; border-top: 1px solid var(--border); }
+.nota-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; color: var(--text); font-size: 13px; font-family: inherit; outline: none;
+  resize: none; transition: border-color 0.2s; }
+.nota-input:focus { border-color: var(--accent); }
+
+/* ── MODAL MODIFICADORES ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  width: 100%; max-width: 480px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
+.modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.modal-title { font-size: 16px; font-weight: 700; }
+.modal-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.modal-body { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 20px; }
+.grupo-mod { display: flex; flex-direction: column; gap: 10px; }
+.grupo-nombre { font-size: 13px; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+.grupo-nombre .req { color: var(--accent); }
+.mod-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.mod-option { padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border);
+  cursor: pointer; background: var(--surface2); color: var(--text); font-size: 14px;
+  font-family: inherit; transition: all 0.15s; display: flex; flex-direction: column; gap: 2px; }
+.mod-option .mod-extra { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+.mod-option.selected { background: rgba(214,48,80,0.12); border-color: var(--accent); color: var(--text); }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; flex-shrink: 0; }
+.btn-cancel { flex: 1; padding: 14px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); font-size: 14px; font-weight: 600;
+  cursor: pointer; font-family: inherit; }
+.btn-add { flex: 2; padding: 14px; background: var(--accent); border: none; border-radius: var(--radius);
+  color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+  transition: opacity 0.15s; }
+.btn-add:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── COBRO ── */
+#screen-cobro { background: var(--bg); }
+.cobro-body { display: grid; grid-template-columns: 1fr 1fr; flex: 1; overflow: hidden; gap: 0; }
+.cobro-left { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border);
+  background: var(--surface); }
+.cobro-right { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.cobro-section-title { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase;
+  padding: 14px 20px 8px; border-bottom: 1px solid var(--border); }
+.cobro-lineas { flex: 1; overflow-y: auto; padding: 8px 0; }
+.cobro-linea { display: flex; justify-content: space-between; padding: 8px 20px; font-size: 13px; }
+.cobro-linea .cl-nombre { color: var(--text); }
+.cobro-linea .cl-precio { font-family: 'JetBrains Mono', monospace; color: var(--text-muted); }
+.cobro-totales { border-top: 1px solid var(--border); padding: 12px 20px; }
+.cobro-total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; color: var(--text-muted); }
+.cobro-total-row.grand { font-size: 20px; font-weight: 700; color: var(--text); padding-top: 8px; border-top: 1px solid var(--border); margin-top: 6px; }
+.cobro-total-val { font-family: 'JetBrains Mono', monospace; }
+.formas-pago-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px 20px; }
+.forma-btn { padding: 14px 12px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.forma-btn.selected { border-color: var(--accent); background: rgba(214,48,80,0.09); color: var(--accent); }
+.forma-icono { font-size: 22px; }
+.monto-section { padding: 8px 20px; }
+.monto-label { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+.monto-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; color: var(--text); font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  text-align: right; outline: none; transition: border-color 0.2s; }
+.monto-input:focus { border-color: var(--accent); }
+.btn-agregar-pago { margin: 0 20px; padding: 12px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all 0.15s; text-align: center; }
+.btn-agregar-pago:active { background: var(--surface3); }
+.pagos-list { flex: 1; overflow-y: auto; padding: 8px 20px; display: flex; flex-direction: column; gap: 6px; }
+.pago-item { display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.pago-nombre { font-size: 13px; font-weight: 600; }
+.pago-monto { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--green); font-weight: 700; }
+.cobro-resumen { padding: 12px 20px; border-top: 1px solid var(--border); }
+.resumen-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+.resumen-row .label { color: var(--text-muted); }
+.resumen-row .val { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+.resumen-row .val.pendiente { color: var(--orange); }
+.resumen-row .val.cambio { color: var(--green); }
+.btn-confirmar { margin: 10px 20px 16px; padding: 16px; background: var(--green); border: none;
+  border-radius: var(--radius); color: #000; font-size: 15px; font-weight: 700; cursor: pointer;
+  font-family: inherit; transition: opacity 0.15s; letter-spacing: 0.3px; }
+.btn-confirmar:disabled { opacity: 0.3; cursor: not-allowed; background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+.btn-confirmar:not(:disabled):active { opacity: 0.85; }
+
+/* ── MODAL COMENSALES ── */
+.comensales-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1500;
+  display: flex; align-items: center; justify-content: center; padding: 20px; }
+.comensales-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 32px 28px; text-align: center; max-width: 380px; width: 100%; }
+.comensales-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.comensales-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 24px; }
+.comensales-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+.comensal-btn { aspect-ratio: 1; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); font-size: 20px; font-weight: 700;
+  cursor: pointer; font-family: 'JetBrains Mono', monospace; transition: all 0.15s; }
+.comensal-btn:active { transform: scale(0.93); }
+.comensal-btn.selected { background: rgba(214,48,80,0.12); border-color: var(--accent); color: var(--accent); }
+.comensales-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn-cancel-com { padding: 14px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); font-size: 14px; font-weight: 600;
+  cursor: pointer; font-family: inherit; }
+.btn-confirm-com { padding: 14px; background: var(--accent); border: none; border-radius: var(--radius);
+  color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+/* ── MODAL CAMBIO ── */
+.cambio-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000;
+  display: flex; align-items: center; justify-content: center; padding: 20px; }
+.cambio-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 40px 32px; text-align: center; max-width: 320px; width: 100%; }
+.cambio-icon { font-size: 48px; margin-bottom: 16px; }
+.cambio-title { font-size: 14px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px; }
+.cambio-amount { font-family: 'JetBrains Mono', monospace; font-size: 42px; font-weight: 700; color: var(--green); }
+.btn-cerrar-cambio { margin-top: 28px; width: 100%; padding: 16px; background: var(--accent); border: none;
+  border-radius: var(--radius); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+/* ── SPLIT CUENTA ── */
+.btn-split { width: 100%; padding: 10px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-muted); font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all 0.15s; letter-spacing: 0.3px; }
+.btn-split.active { background: rgba(197,98,0,0.10); border-color: var(--orange); color: var(--orange); }
+.cuenta-badge { display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px; border-radius: 11px; padding: 0 5px;
+  font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; flex-shrink: 0; transition: transform 0.1s; margin-right: 6px; }
+.cuenta-badge:active { transform: scale(0.88); }
+.cuenta-badge.c1 { background: rgba(26,82,204,0.12); color: var(--blue); border: 1px solid rgba(26,82,204,0.30); }
+.cuenta-badge.c2 { background: rgba(197,98,0,0.12); color: var(--orange); border: 1px solid rgba(197,98,0,0.28); }
+.cuenta-badge.c3 { background: rgba(0,144,76,0.12); color: var(--green); border: 1px solid rgba(0,144,76,0.28); }
+.cuenta-badge.cX { background: rgba(214,48,80,0.12); color: var(--accent); border: 1px solid rgba(214,48,80,0.28); }
+.cuentas-tabs-cobro { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; }
+.cuenta-tab-cobro { padding: 8px 14px; border-radius: 40px; border: 1px solid var(--border);
+  cursor: pointer; background: transparent; color: var(--text-muted); font-size: 12px;
+  font-family: inherit; font-weight: 600; white-space: nowrap; transition: all 0.15s; }
+.cuenta-tab-cobro.active { background: rgba(197,98,0,0.12); border-color: var(--orange); color: var(--orange); }
+.cuenta-tab-cobro.pagada { background: rgba(0,144,76,0.10); border-color: rgba(0,144,76,0.28); color: var(--green); opacity: 0.6; pointer-events: none; }
+.cobro-linea-dim { opacity: 0.25; }
+
+/* ── LOADING ── */
+.loading-spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.8s linear infinite; margin: auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; color: var(--text-dim); gap: 10px; font-size: 14px; }
+.empty-icon { font-size: 36px; opacity: 0.4; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(80,80,180,0.20); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(80,80,180,0.32); }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="screen-login" class="screen active">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="brand">ServalPOS</div>
+      <div class="tagline">Sistema de Punto de Venta</div>
+    </div>
+    <div class="form-group">
+      <label>Correo electrónico</label>
+      <input type="email" id="login-email" placeholder="correo@restaurante.com" value="admin@serval.com">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="login-password" placeholder="••••••••" value="admin123">
+    </div>
+    <button class="btn-login" id="btn-entrar" onclick="doLogin()">ENTRAR</button>
+  </div>
+</div>
+
+<!-- ══════════════ MESAS ══════════════ -->
+<div id="screen-mesas" class="screen">
+  <div class="topbar">
+    <span class="topbar-brand">ServalPOS</span>
+    <div class="topbar-spacer"></div>
+    <span class="topbar-user" id="topbar-user">—</span>
+    <button class="btn-exit" onclick="doLogout()">Salir</button>
+  </div>
+  <div class="zonas-tabs" id="zonas-tabs"></div>
+  <div class="mesas-plano-wrap">
+    <div class="mesas-plano">
+      <div class="mesas-plano-inner" id="mesas-grid"></div>
+    </div>
+  </div>
+  <div class="mesas-leyenda">
+    <div class="leyenda-item"><div class="leyenda-dot libre"></div>Libre</div>
+    <div class="leyenda-item"><div class="leyenda-dot ocupada"></div>Ocupada</div>
+    <div class="leyenda-item"><div class="leyenda-dot por_cobrar"></div>Por cobrar</div>
+    <div class="leyenda-item"><div class="leyenda-dot reservada"></div>Reservada</div>
+    <div class="leyenda-item"><div class="leyenda-dot bloqueada"></div>Bloqueada</div>
+  </div>
+</div>
+
+<!-- ══════════════ TPV ══════════════ -->
+<div id="screen-tpv" class="screen">
+  <div class="topbar">
+    <button class="btn-back" onclick="goTo('mesas')">← Volver</button>
+    <span class="topbar-title" id="tpv-mesa-label">Mesa —</span>
+    <div class="topbar-spacer"></div>
+  </div>
+  <div class="tpv-body">
+    <!-- Izquierda: catálogo -->
+    <div class="tpv-left">
+      <div class="familias-tabs" id="familias-tabs"></div>
+      <div class="articulos-grid" id="articulos-grid"></div>
+    </div>
+    <!-- Derecha: orden -->
+    <div class="tpv-right">
+      <div class="orden-header">
+        <div class="orden-header-num" id="orden-num">ORDEN #—</div>
+        <div class="orden-header-info" id="orden-info">—</div>
+      </div>
+      <div class="orden-lineas" id="orden-lineas"></div>
+      <div class="nota-section">
+        <textarea class="nota-input" id="nota-input" rows="2" placeholder="Nota para cocina…" oninput="debounceSaveNota(this.value)"></textarea>
+      </div>
+      <div class="orden-totales" id="orden-totales"></div>
+      <div class="orden-actions">
+        <button class="btn-cocina" onclick="enviarCocina()">🍳 Enviar cocina</button>
+        <button class="btn-cobrar" onclick="irCobro()">💳 Cobrar</button>
+      </div>
+      <div style="padding: 0 12px 10px; display:flex; gap:8px;">
+        <button class="btn-split" id="btn-split" onclick="toggleSplitMode()" style="flex:1">÷ Dividir cuenta</button>
+        <button class="btn-split" onclick="abrirModalUnirTPV()" style="flex:1">＋ Unir mesa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal modificadores -->
+<div id="modal-mods" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-art-nombre">Artículo</div>
+      <div class="modal-subtitle">Selecciona las opciones</div>
+    </div>
+    <div class="modal-body" id="modal-grupos"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-add" id="btn-agregar-modal" onclick="confirmarModal()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ COBRO ══════════════ -->
+<div id="screen-cobro" class="screen">
+  <div class="topbar">
+    <button class="btn-back" onclick="goTo('tpv')">← Volver</button>
+    <span class="topbar-title">Cobro</span>
+    <span class="topbar-spacer"></span>
+    <span class="topbar-user" id="cobro-mesa-label" style="color:var(--text-muted);font-size:13px">—</span>
+  </div>
+  <div class="cobro-body">
+    <!-- Izquierda: resumen -->
+    <div class="cobro-left">
+      <div class="cobro-section-title">Resumen de orden</div>
+      <div class="cobro-lineas" id="cobro-lineas"></div>
+      <div class="cobro-totales" id="cobro-totales"></div>
+    </div>
+    <!-- Derecha: pago -->
+    <div class="cobro-right">
+      <div id="cuentas-tabs-cobro" style="display:none"></div>
+      <div class="cobro-section-title">Formas de pago</div>
+      <div class="formas-pago-grid" id="formas-pago-grid"></div>
+      <div class="monto-section">
+        <div class="monto-label">Monto</div>
+        <input type="number" class="monto-input" id="monto-pago" placeholder="0.00">
+      </div>
+      <button class="btn-agregar-pago" onclick="agregarPago()">+ Agregar pago</button>
+      <div class="pagos-list" id="pagos-list"></div>
+      <div class="cobro-resumen" id="cobro-resumen"></div>
+      <button class="btn-confirmar" id="btn-confirmar" onclick="confirmarCobro()">✅ Confirmar cobro</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal acción mesa -->
+<div id="modal-accion-mesa" class="comensales-modal" style="display:none">
+  <div class="comensales-box">
+    <div class="comensales-title" id="accion-mesa-title">Mesa —</div>
+    <div class="comensales-sub">¿Qué deseas hacer?</div>
+    <div class="accion-menu">
+      <button class="btn-confirm-com" onclick="abrirOrdenDirecta()">▶ &nbsp;Abrir orden</button>
+      <button class="btn-cancel-com" onclick="iniciarModoUnion()">＋ &nbsp;Unir con otras mesas</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal comensales -->
+<div id="modal-comensales" class="comensales-modal" style="display:none">
+  <div class="comensales-box">
+    <div class="comensales-title" id="comensales-titulo">Mesa —</div>
+    <div class="comensales-sub">¿Cuántos comensales?</div>
+    <div class="comensales-grid" id="comensales-grid"></div>
+    <div class="comensales-actions">
+      <button class="btn-cancel-com" onclick="cerrarModalComensales()">Cancelar</button>
+      <button class="btn-confirm-com" onclick="confirmarComensales()">Continuar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Barra de modo unión (mesas screen) -->
+<div id="merge-bar" class="merge-bar" style="display:none">
+  <span class="merge-bar-label" id="merge-bar-label">Selecciona las mesas a unir con <strong id="merge-bar-principal">—</strong></span>
+  <button class="btn-back" onclick="cancelarModoUnion()">Cancelar</button>
+  <button id="merge-bar-confirm" class="btn-cobrar" style="padding:10px 18px;font-size:13px" onclick="confirmarUnion()" disabled>Confirmar</button>
+</div>
+
+<!-- Modal unir mesa desde TPV -->
+<div id="modal-unir-tpv" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Unir mesa</div>
+      <div class="modal-subtitle">Selecciona las mesas libres a unir con <strong id="unir-tpv-principal">—</strong></div>
+    </div>
+    <div class="unir-mesas-grid" id="unir-mesas-grid"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="cerrarModalUnirTPV()">Cancelar</button>
+      <button class="btn-add" id="btn-confirmar-unir-tpv" onclick="confirmarUnirTPV()" disabled>Unir mesas</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal cambio -->
+<div id="modal-cambio" class="cambio-modal" style="display:none">
+  <div class="cambio-box">
+    <div class="cambio-icon">💵</div>
+    <div class="cambio-title">Cambio a devolver</div>
+    <div class="cambio-amount" id="cambio-amount">$0.00</div>
+    <button class="btn-cerrar-cambio" onclick="finalizarCobro()">Cerrar y finalizar</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  DATOS DE DEMO (simula backend real)
+// ═══════════════════════════════════════════════
+const DEMO = {
+  token: 'demo_jwt_token_123',
+  user: { id: 1, nombre: 'Juan García', rol: 'admin' },
+  zonas: [
+    { id: 1, nombre: 'Interior' },
+    { id: 2, nombre: 'Terraza' },
+    { id: 3, nombre: 'Barra' },
+  ],
+  mesas: [
+    { id: 1,  nombre: 'M1', estado: 'libre',      zona_id: 1, capacidad: 4, personas: 0, posicion_x: 15, posicion_y: 19 },
+    { id: 2,  nombre: 'M2', estado: 'ocupada',    zona_id: 1, capacidad: 4, personas: 3, posicion_x: 42, posicion_y: 19 },
+    { id: 3,  nombre: 'M3', estado: 'libre',      zona_id: 1, capacidad: 2, personas: 0, posicion_x: 70, posicion_y: 19 },
+    { id: 4,  nombre: 'M4', estado: 'por_cobrar', zona_id: 1, capacidad: 6, personas: 5, posicion_x: 15, posicion_y: 52 },
+    { id: 5,  nombre: 'M5', estado: 'libre',      zona_id: 1, capacidad: 4, personas: 0, posicion_x: 42, posicion_y: 52 },
+    { id: 6,  nombre: 'M6', estado: 'reservada',  zona_id: 1, capacidad: 4, personas: 0, posicion_x: 70, posicion_y: 52 },
+    { id: 7,  nombre: 'M7', estado: 'ocupada',    zona_id: 1, capacidad: 8, personas: 6, posicion_x: 26, posicion_y: 82 },
+    { id: 8,  nombre: 'M8', estado: 'libre',      zona_id: 1, capacidad: 4, personas: 0, posicion_x: 65, posicion_y: 82 },
+    { id: 11, nombre: 'T1', estado: 'libre',      zona_id: 2, capacidad: 4, personas: 0, posicion_x: 22, posicion_y: 28 },
+    { id: 12, nombre: 'T2', estado: 'ocupada',    zona_id: 2, capacidad: 4, personas: 2, posicion_x: 65, posicion_y: 28 },
+    { id: 13, nombre: 'T3', estado: 'libre',      zona_id: 2, capacidad: 2, personas: 0, posicion_x: 43, posicion_y: 68 },
+    { id: 21, nombre: 'B1', estado: 'libre',      zona_id: 3, capacidad: 4, personas: 0, posicion_x: 28, posicion_y: 40 },
+    { id: 22, nombre: 'B2', estado: 'ocupada',    zona_id: 3, capacidad: 4, personas: 3, posicion_x: 68, posicion_y: 40 },
+  ],
+  familias: [
+    { id: 1, nombre: 'Carnes', color: '#e94560' },
+    { id: 2, nombre: 'Bebidas', color: '#448aff' },
+    { id: 3, nombre: 'Postres', color: '#ff6b6b' },
+    { id: 4, nombre: 'Entradas', color: '#ffab40' },
+    { id: 5, nombre: 'Especiales', color: '#00e676' },
+  ],
+  articulos: {
+    1: [
+      { id: 101, nombre: 'Churrasco', precio: 850, imagen: '🥩', familia_id: 1, tiene_mods: true },
+      { id: 102, nombre: 'Lomo Fino', precio: 950, imagen: '🥩', familia_id: 1, tiene_mods: true },
+      { id: 103, nombre: 'Pollo a la Brasa', precio: 650, imagen: '🍗', familia_id: 1, tiene_mods: false },
+      { id: 104, nombre: 'Costillas BBQ', precio: 780, imagen: '🍖', familia_id: 1, tiene_mods: true },
+      { id: 105, nombre: 'Filete Miñón', precio: 1100, imagen: '🥩', familia_id: 1, tiene_mods: true },
+      { id: 106, nombre: 'Pechuga Grill', precio: 580, imagen: '🍗', familia_id: 1, tiene_mods: false },
+    ],
+    2: [
+      { id: 201, nombre: 'Coca Cola', precio: 120, imagen: '🥤', familia_id: 2, tiene_mods: false },
+      { id: 202, nombre: 'Jugo Natural', precio: 180, imagen: '🍊', familia_id: 2, tiene_mods: true },
+      { id: 203, nombre: 'Cerveza Local', precio: 220, imagen: '🍺', familia_id: 2, tiene_mods: false },
+      { id: 204, nombre: 'Vino Tinto', precio: 380, imagen: '🍷', familia_id: 2, tiene_mods: false },
+      { id: 205, nombre: 'Agua Mineral', precio: 80, imagen: '💧', familia_id: 2, tiene_mods: false },
+    ],
+    3: [
+      { id: 301, nombre: 'Flan', precio: 220, imagen: '🍮', familia_id: 3, tiene_mods: false },
+      { id: 302, nombre: 'Brownie', precio: 280, imagen: '🍫', familia_id: 3, tiene_mods: false },
+      { id: 303, nombre: 'Helado', precio: 200, imagen: '🍨', familia_id: 3, tiene_mods: true },
+    ],
+    4: [
+      { id: 401, nombre: 'Ensalada Verde', precio: 280, imagen: '🥗', familia_id: 4, tiene_mods: false },
+      { id: 402, nombre: 'Tabla de Quesos', precio: 450, imagen: '🧀', familia_id: 4, tiene_mods: false },
+      { id: 403, nombre: 'Ceviche', precio: 380, imagen: '🍤', familia_id: 4, tiene_mods: false },
+    ],
+    5: [
+      { id: 501, nombre: 'Chef Especial', precio: 1200, imagen: '⭐', familia_id: 5, tiene_mods: true },
+      { id: 502, nombre: 'Plato del Día', precio: 750, imagen: '🍽️', familia_id: 5, tiene_mods: false },
+    ],
+  },
+  modificadores: {
+    101: [
+      {
+        id: 1, nombre: 'Término de Cocción', seleccion: 'unica', obligatorio: true,
+        opciones: [
+          { id: 1, nombre: 'Poco hecho', precio_extra: 0 },
+          { id: 2, nombre: 'Al punto', precio_extra: 0 },
+          { id: 3, nombre: 'Bien hecho', precio_extra: 0 },
+        ]
+      },
+      {
+        id: 2, nombre: 'Acompañamiento', seleccion: 'unica', obligatorio: false,
+        opciones: [
+          { id: 4, nombre: 'Papas fritas', precio_extra: 0 },
+          { id: 5, nombre: 'Arroz', precio_extra: 0 },
+          { id: 6, nombre: 'Ensalada', precio_extra: 50 },
+        ]
+      },
+      {
+        id: 3, nombre: 'Extras', seleccion: 'multiple', obligatorio: false,
+        opciones: [
+          { id: 7, nombre: 'Chimichurri', precio_extra: 80 },
+          { id: 8, nombre: 'Salsa BBQ', precio_extra: 60 },
+          { id: 9, nombre: 'Cebolla caramelizada', precio_extra: 100 },
+        ]
+      }
+    ],
+    102: [
+      {
+        id: 4, nombre: 'Término de Cocción', seleccion: 'unica', obligatorio: true,
+        opciones: [
+          { id: 10, nombre: 'Poco hecho', precio_extra: 0 },
+          { id: 11, nombre: 'Al punto', precio_extra: 0 },
+          { id: 12, nombre: 'Bien hecho', precio_extra: 0 },
+        ]
+      }
+    ],
+    202: [
+      {
+        id: 5, nombre: 'Sabor', seleccion: 'unica', obligatorio: true,
+        opciones: [
+          { id: 13, nombre: 'Naranja', precio_extra: 0 },
+          { id: 14, nombre: 'Piña', precio_extra: 0 },
+          { id: 15, nombre: 'Maracuyá', precio_extra: 20 },
+        ]
+      }
+    ],
+  },
+  formasPago: [
+    { id: 1, nombre: 'Efectivo', icono: '💵' },
+    { id: 2, nombre: 'Tarjeta', icono: '💳' },
+    { id: 3, nombre: 'Transferencia', icono: '📱' },
+    { id: 4, nombre: 'Otro', icono: '🔖' },
+  ],
+};
+
+// ═══════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ═══════════════════════════════════════════════
+let state = {
+  token: null, user: null,
+  zonas: [], mesas: [], zonaActiva: null,
+  ordenId: null, mesaId: null, mesaLabel: '',
+  numComensales: 1,
+  orden: null, lineas: [],
+  familias: [], familiaActiva: null, articulos: [],
+  modalArticulo: null, modalMods: {}, modalSel: {},
+  lineaSeleccionada: null,
+  // split
+  splitMode: false, numCuentas: 1, cuentaActivaCobro: 1, cuentasCobradas: new Set(),
+  // merge mesas
+  mergeMode: false, mergePrincipal: null, mergeSelected: [],
+  unirTPVSelected: [],
+  formasPago: [], formaSeleccionada: null,
+  pagos: [],
+  pollingInterval: null,
+  nextId: 1000,
+};
+
+function nextId() { return ++state.nextId; }
+
+// ═══════════════════════════════════════════════
+//  PANTALLAS
+// ═══════════════════════════════════════════════
+function goTo(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+}
+
+function toast(msg, tipo = 'error') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + tipo;
+  setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+
+function fmt(num) {
+  return '$' + Number(num).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// ═══════════════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════════════
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  const btn = document.getElementById('btn-entrar');
+  if (!email || !pass) { toast('Completa todos los campos'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Conectando…';
+  setTimeout(() => {
+    if (email && pass) {
+      state.token = DEMO.token;
+      state.user = DEMO.user;
+      localStorage.setItem('pos_token', state.token);
+      localStorage.setItem('pos_user', JSON.stringify(state.user));
+      btn.disabled = false;
+      btn.textContent = 'ENTRAR';
+      toast('¡Bienvenido, ' + state.user.nombre + '!', 'success');
+      setTimeout(() => loadMesas(), 600);
+    } else {
+      toast('Credenciales incorrectas');
+      btn.disabled = false;
+      btn.textContent = 'ENTRAR';
+    }
+  }, 800);
+}
+
+function doLogout() {
+  localStorage.removeItem('pos_token');
+  localStorage.removeItem('pos_user');
+  state.token = null; state.user = null;
+  if (state.pollingInterval) { clearInterval(state.pollingInterval); state.pollingInterval = null; }
+  goTo('login');
+}
+
+// ═══════════════════════════════════════════════
+//  ACCIÓN MESA (mini-menú al tocar mesa libre)
+// ═══════════════════════════════════════════════
+function abrirAccionMesa(mesa) {
+  state.mesaId = mesa.id;
+  state.mesaLabel = mesa.nombre;
+  document.getElementById('accion-mesa-title').textContent = 'Mesa ' + mesa.nombre;
+  document.getElementById('modal-accion-mesa').style.display = 'flex';
+}
+
+function cerrarAccionMesa() {
+  document.getElementById('modal-accion-mesa').style.display = 'none';
+}
+
+function abrirOrdenDirecta() {
+  cerrarAccionMesa();
+  const mesa = state.mesas.find(m => m.id === state.mesaId);
+  if (!mesa) return;
+  state.numComensales = 1;
+  abrirModalComensales('Mesa ' + mesa.nombre, () => {
+    const ordenId = nextId();
+    state.ordenId = ordenId;
+    state.orden = {
+      id: ordenId, numero: String(ordenId).padStart(4, '0'),
+      mesa_id: state.mesaId, estado: 'abierta',
+      subtotal: 0, impuestos: 0, propina: 0, total: 0, notas: ''
+    };
+    state.lineas = [];
+    mesa.estado = 'ocupada';
+    loadTPV();
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  COMENSALES
+// ═══════════════════════════════════════════════
+let _comensalesCallback = null;
+
+function abrirModalComensales(titulo, callback) {
+  _comensalesCallback = callback;
+  document.getElementById('comensales-titulo').textContent = titulo;
+  const sel = state.numComensales || 1;
+  document.getElementById('comensales-grid').innerHTML =
+    Array.from({ length: 12 }, (_, i) => i + 1).map(n => `
+      <button class="comensal-btn ${n === sel ? 'selected' : ''}" onclick="selectComensales(${n})">${n}</button>
+    `).join('');
+  document.getElementById('modal-comensales').style.display = 'flex';
+}
+
+function selectComensales(n) {
+  state.numComensales = n;
+  document.querySelectorAll('#comensales-grid .comensal-btn').forEach((btn, i) => {
+    btn.classList.toggle('selected', i + 1 === n);
+  });
+}
+
+function cerrarModalComensales() {
+  document.getElementById('modal-comensales').style.display = 'none';
+  _comensalesCallback = null;
+}
+
+function confirmarComensales() {
+  const cb = _comensalesCallback;
+  cerrarModalComensales();
+  if (cb) cb();
+}
+
+function cambiarComensales() {
+  abrirModalComensales('Mesa ' + state.mesaLabel, () => { renderOrden(); });
+}
+
+// ═══════════════════════════════════════════════
+//  UNIÓN DE MESAS — DESDE PANTALLA DE MESAS
+// ═══════════════════════════════════════════════
+function iniciarModoUnion() {
+  cerrarAccionMesa();
+  state.mergeMode = true;
+  state.mergePrincipal = state.mesas.find(m => m.id === state.mesaId);
+  state.mergeSelected = [];
+  document.getElementById('merge-bar-principal').textContent = state.mergePrincipal?.nombre ?? '—';
+  document.getElementById('merge-bar').style.display = 'flex';
+  document.getElementById('merge-bar-confirm').disabled = true;
+  renderMesas();
+}
+
+function cancelarModoUnion() {
+  state.mergeMode = false;
+  state.mergePrincipal = null;
+  state.mergeSelected = [];
+  document.getElementById('merge-bar').style.display = 'none';
+  renderMesas();
+}
+
+function confirmarUnion() {
+  const principal = state.mergePrincipal;
+  if (!principal) return;
+  // Marcar mesas secundarias como unidas
+  state.mergeSelected.forEach(id => {
+    const mesa = state.mesas.find(m => m.id === id);
+    if (mesa) { mesa.estado = 'ocupada'; mesa.mesa_principal_id = principal.id; }
+  });
+  cancelarModoUnion();
+  // Abrir orden en la mesa principal
+  state.mesaId = principal.id;
+  state.mesaLabel = principal.nombre;
+  abrirOrdenDirecta();
+}
+
+// ═══════════════════════════════════════════════
+//  UNIÓN DE MESAS — DESDE TPV
+// ═══════════════════════════════════════════════
+function abrirModalUnirTPV() {
+  const mesaPrincipal = state.mesas.find(m => m.id === state.mesaId);
+  document.getElementById('unir-tpv-principal').textContent = mesaPrincipal?.nombre ?? '—';
+  state.unirTPVSelected = [];
+  renderUnirMesasTPV();
+  document.getElementById('modal-unir-tpv').style.display = 'flex';
+}
+
+function cerrarModalUnirTPV() {
+  document.getElementById('modal-unir-tpv').style.display = 'none';
+  state.unirTPVSelected = [];
+}
+
+function renderUnirMesasTPV() {
+  const libres = state.mesas.filter(m =>
+    m.estado === 'libre' && m.id !== state.mesaId && !m.mesa_principal_id
+  );
+  const el = document.getElementById('unir-mesas-grid');
+  if (!libres.length) {
+    el.innerHTML = '<p style="padding:16px 24px;color:var(--text-muted);font-size:13px;grid-column:1/-1">No hay mesas libres disponibles</p>';
+  } else {
+    el.innerHTML = libres.map(m => `
+      <button class="unir-mesa-btn ${state.unirTPVSelected.includes(m.id) ? 'selected' : ''}"
+        onclick="toggleUnirTPV(${m.id})">
+        <span class="unir-mesa-nombre">${m.nombre}</span>
+        <span class="unir-mesa-sub">${m.zona_id ? '' : ''}</span>
+      </button>
+    `).join('');
+  }
+  document.getElementById('btn-confirmar-unir-tpv').disabled = state.unirTPVSelected.length === 0;
+}
+
+function toggleUnirTPV(mesaId) {
+  const idx = state.unirTPVSelected.indexOf(mesaId);
+  if (idx >= 0) state.unirTPVSelected.splice(idx, 1);
+  else state.unirTPVSelected.push(mesaId);
+  renderUnirMesasTPV();
+}
+
+function confirmarUnirTPV() {
+  state.unirTPVSelected.forEach(id => {
+    const mesa = state.mesas.find(m => m.id === id);
+    if (mesa) { mesa.estado = 'ocupada'; mesa.mesa_principal_id = state.mesaId; }
+  });
+  cerrarModalUnirTPV();
+  toast(state.unirTPVSelected.length + ' mesa(s) unidas ✓', 'success');
+  state.unirTPVSelected = [];
+}
+
+// ═══════════════════════════════════════════════
+//  MESAS
+// ═══════════════════════════════════════════════
+function loadMesas() {
+  state.zonas = [...DEMO.zonas];
+  state.mesas = DEMO.mesas.map(m => ({...m}));
+  if (!state.zonaActiva) state.zonaActiva = state.zonas[0]?.id ?? null;
+  const user = JSON.parse(localStorage.getItem('pos_user') || '{}');
+  document.getElementById('topbar-user').textContent = user.nombre || '—';
+  renderZonas();
+  renderMesas();
+  goTo('mesas');
+  if (state.pollingInterval) clearInterval(state.pollingInterval);
+  state.pollingInterval = setInterval(() => { /* polling simulado */ }, 15000);
+}
+
+function renderZonas() {
+  const el = document.getElementById('zonas-tabs');
+  el.innerHTML = state.zonas.map(z => `
+    <button class="zona-tab ${z.id === state.zonaActiva ? 'active' : ''}" onclick="selectZona(${z.id})">
+      ${z.nombre}
+    </button>
+  `).join('');
+}
+
+function selectZona(id) {
+  state.zonaActiva = id;
+  renderZonas();
+  renderMesas();
+}
+
+function renderMesas() {
+  const el = document.getElementById('mesas-grid');
+  const mesas = state.mesas.filter(m => m.zona_id === state.zonaActiva);
+
+  el.innerHTML = mesas.map(m => {
+    let extraClass = '';
+    let subLabel = m.estado === 'por_cobrar' ? 'cobrar' : m.estado;
+
+    if (state.mergeMode) {
+      if (m.id === state.mergePrincipal?.id) {
+        extraClass = 'mesa-merge-principal';
+        subLabel = 'principal';
+      } else if (state.mergeSelected.includes(m.id)) {
+        extraClass = 'mesa-merge-seleccionada';
+        subLabel = '✓ unida';
+      } else if (m.estado === 'libre') {
+        extraClass = 'mesa-merge-disponible';
+      } else {
+        extraClass = 'mesa-merge-dim';
+      }
+    }
+
+    let indicatorHTML = '';
+    if (!state.mergeMode && m.mesa_principal_id) {
+      const principal = state.mesas.find(x => x.id === m.mesa_principal_id);
+      indicatorHTML = `<span class="mesa-union-indicator">↗ ${principal?.nombre ?? ''}</span>`;
+      subLabel = 'unida';
+    }
+
+    const cap = m.capacidad || 4;
+    const pers = m.personas || 0;
+    const topCount = Math.ceil(cap / 2);
+    const botCount = Math.floor(cap / 2);
+    const ocupTop = Math.min(pers, topCount);
+    const ocupBot = Math.max(0, pers - ocupTop);
+
+    const siTop = Array.from({ length: topCount }, (_, i) =>
+      `<div class="silla ${i < ocupTop ? 'silla-ocup' : ''}"></div>`
+    ).join('');
+    const siBot = Array.from({ length: botCount }, (_, i) =>
+      `<div class="silla ${i < ocupBot ? 'silla-ocup' : ''}"></div>`
+    ).join('');
+
+    const px = m.posicion_x ?? 50;
+    const py = m.posicion_y ?? 50;
+
+    return `<div class="mesa-fp mesa-${m.estado} ${extraClass}"
+        style="left:${px}%;top:${py}%"
+        onclick="clickMesa(${m.id})">
+      <div class="sillas-top">${siTop}</div>
+      <div style="position:relative;display:inline-block">
+        ${indicatorHTML}
+        <div class="mesa-superficie">
+          <span class="mesa-fp-nombre">${m.nombre}</span>
+          <span class="mesa-fp-personas">${pers}/${cap}</span>
+          <span class="mesa-fp-estado">${subLabel}</span>
+        </div>
+      </div>
+      <div class="sillas-bottom">${siBot}</div>
+    </div>`;
+  }).join('');
+}
+
+function clickMesa(mesaId) {
+  const mesa = state.mesas.find(m => m.id === mesaId);
+  if (!mesa) return;
+
+  // Modo unión activo: seleccionar/deseleccionar mesas libres
+  if (state.mergeMode) {
+    if (mesa.id === state.mergePrincipal?.id) return;
+    if (mesa.estado !== 'libre') return;
+    const idx = state.mergeSelected.indexOf(mesaId);
+    if (idx >= 0) state.mergeSelected.splice(idx, 1);
+    else state.mergeSelected.push(mesaId);
+    document.getElementById('merge-bar-confirm').disabled = state.mergeSelected.length === 0;
+    document.getElementById('merge-bar-label').innerHTML =
+      `Unir con <strong>${state.mergePrincipal?.nombre}</strong> — ${state.mergeSelected.length} mesa(s) seleccionada(s)`;
+    renderMesas();
+    return;
+  }
+
+  // Mesa secundaria unida → redirigir a la orden del principal
+  if (mesa.mesa_principal_id) {
+    const principal = state.mesas.find(m => m.id === mesa.mesa_principal_id);
+    if (!principal) return;
+    mesaId = principal.id;
+    const mesaP = principal;
+    state.mesaId = mesaP.id;
+    state.mesaLabel = mesaP.nombre;
+    if (mesaP.estado === 'ocupada') {
+      const ordenId = 2000 + mesaP.id;
+      state.ordenId = ordenId;
+      state.orden = { id: ordenId, numero: String(ordenId).padStart(4,'0'), mesa_id: mesaP.id,
+        estado: 'abierta', subtotal: 0, impuestos: 0, propina: 0, total: 0, notas: '' };
+      state.lineas = [];
+      loadTPV();
+    }
+    return;
+  }
+
+  state.mesaId = mesaId;
+  state.mesaLabel = mesa.nombre;
+
+  if (mesa.estado === 'libre') {
+    abrirAccionMesa(mesa);
+  } else if (mesa.estado === 'ocupada') {
+    // Buscar orden existente
+    const ordenId = 2000 + mesaId;
+    state.ordenId = ordenId;
+    state.orden = {
+      id: ordenId, numero: String(ordenId).padStart(4, '0'),
+      mesa_id: mesaId, estado: 'abierta',
+      subtotal: 1050, impuestos: 189, propina: 105, total: 1344, notas: ''
+    };
+    state.lineas = [
+      { id: nextId(), orden_id: ordenId, articulo_id: 101, nombre_articulo: 'Churrasco',
+        cantidad: 1, precio_unitario: 850, subtotal_linea: 850, estado: 'pendiente',
+        modificadores: [{ id: 1, nombre_modificador: 'Al punto', precio_extra: 0 }] },
+      { id: nextId(), orden_id: ordenId, articulo_id: 201, nombre_articulo: 'Coca Cola',
+        cantidad: 2, precio_unitario: 100, subtotal_linea: 200, estado: 'pendiente', modificadores: [] },
+    ];
+    loadTPV();
+  } else if (mesa.estado === 'por_cobrar') {
+    const ordenId = 3000 + mesaId;
+    state.ordenId = ordenId;
+    state.orden = {
+      id: ordenId, numero: String(ordenId).padStart(4, '0'),
+      mesa_id: mesaId, estado: 'abierta',
+      subtotal: 1400, impuestos: 252, propina: 140, total: 1792, notas: ''
+    };
+    state.lineas = [
+      { id: nextId(), orden_id: ordenId, articulo_id: 101, nombre_articulo: 'Churrasco',
+        cantidad: 1, precio_unitario: 850, subtotal_linea: 850, estado: 'en_preparacion',
+        modificadores: [{ id: 1, nombre_modificador: 'Poco hecho', precio_extra: 0 }] },
+      { id: nextId(), orden_id: ordenId, articulo_id: 201, nombre_articulo: 'Coca Cola',
+        cantidad: 2, precio_unitario: 100, subtotal_linea: 200, estado: 'en_preparacion', modificadores: [] },
+    ];
+    loadCobro();
+  } else if (mesa.estado === 'bloqueada' || mesa.estado === 'reservada') {
+    toast('Esta mesa no está disponible');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  TPV
+// ═══════════════════════════════════════════════
+function loadTPV() {
+  state.familias = [...DEMO.familias];
+  state.familiaActiva = state.familias[0]?.id ?? null;
+  state.lineaSeleccionada = null;
+  state.splitMode = false; state.numCuentas = 1;
+  const btnSplit = document.getElementById('btn-split');
+  if (btnSplit) btnSplit.classList.remove('active');
+  document.getElementById('tpv-mesa-label').textContent = 'Mesa ' + state.mesaLabel;
+  document.getElementById('nota-input').value = state.orden?.notas ?? '';
+  renderFamilias();
+  loadArticulos();
+  renderOrden();
+  goTo('tpv');
+}
+
+function renderFamilias() {
+  const el = document.getElementById('familias-tabs');
+  el.innerHTML = state.familias.map(f => `
+    <button class="familia-tab ${f.id === state.familiaActiva ? 'active' : ''}"
+      onclick="selectFamilia(${f.id})">${f.nombre}</button>
+  `).join('');
+}
+
+function selectFamilia(id) {
+  state.familiaActiva = id;
+  renderFamilias();
+  loadArticulos();
+}
+
+function loadArticulos() {
+  const arts = DEMO.articulos[state.familiaActiva] || [];
+  state.articulos = arts;
+  const el = document.getElementById('articulos-grid');
+  el.innerHTML = arts.map(a => `
+    <div class="articulo-card" onclick="clickArticulo(${a.id})">
+      <div class="articulo-imagen">${a.imagen}</div>
+      <div class="articulo-nombre">${a.nombre}</div>
+      <div class="articulo-precio">${fmt(a.precio)}</div>
+    </div>
+  `).join('');
+}
+
+function clickArticulo(artId) {
+  const art = state.articulos.find(a => a.id === artId);
+  if (!art) return;
+  const mods = DEMO.modificadores[artId];
+  if (art.tiene_mods && mods && mods.length) {
+    abrirModalMods(art, mods);
+  } else {
+    agregarLinea(art, []);
+  }
+}
+
+function agregarLinea(art, modsSeleccionados) {
+  const precioExtra = modsSeleccionados.reduce((s, m) => s + m.precio_extra, 0);
+  const precioTotal = art.precio + precioExtra;
+  // Ver si ya existe la misma línea sin modificadores
+  const existente = state.lineas.find(l => l.articulo_id === art.id && l.modificadores.length === 0 && modsSeleccionados.length === 0);
+  if (existente && modsSeleccionados.length === 0) {
+    existente.cantidad += 1;
+    existente.subtotal_linea = existente.cantidad * existente.precio_unitario;
+  } else {
+    const linea = {
+      id: nextId(), orden_id: state.ordenId, articulo_id: art.id,
+      nombre_articulo: art.nombre, cantidad: 1,
+      precio_unitario: precioTotal, subtotal_linea: precioTotal,
+      estado: 'pendiente', cuenta_num: 1,
+      modificadores: modsSeleccionados.map(m => ({ id: nextId(), nombre_modificador: m.nombre, precio_extra: m.precio_extra }))
+    };
+    state.lineas.push(linea);
+  }
+  recalcularOrden();
+  renderOrden();
+  toast(art.nombre + ' agregado', 'success');
+}
+
+function recalcularOrden() {
+  const subtotal = state.lineas.reduce((s, l) => s + l.subtotal_linea, 0);
+  const impuestos = Math.round(subtotal * 0.18);
+  const propina = Math.round(subtotal * 0.10);
+  const total = subtotal + impuestos + propina;
+  state.orden = { ...state.orden, subtotal, impuestos, propina, total };
+}
+
+function renderOrden() {
+  const orden = state.orden;
+  document.getElementById('orden-num').textContent = 'ORDEN #' + (orden?.numero ?? '—');
+  const com = state.numComensales || 1;
+  document.getElementById('orden-info').innerHTML =
+    'Mesa ' + state.mesaLabel + ' · ' + (state.user?.nombre ?? '') +
+    ' · <span onclick="cambiarComensales()" style="cursor:pointer;border-bottom:1px dotted currentColor">' +
+    com + (com === 1 ? ' comensal' : ' comensales') + ' ✎</span>';
+
+  const linesEl = document.getElementById('orden-lineas');
+  if (!state.lineas.length) {
+    linesEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🍽️</div><span>Orden vacía</span></div>';
+  } else {
+    linesEl.innerHTML = state.lineas.map(l => {
+      const sel = state.lineaSeleccionada?.id === l.id;
+      const cn = l.cuenta_num || 1;
+      const badgeCls = cn <= 3 ? 'c' + cn : 'cX';
+      const badge = state.splitMode
+        ? `<span class="cuenta-badge ${badgeCls}" title="Toca para cambiar cuenta" onclick="ciclarCuenta(${l.id},event)">C${cn}</span>`
+        : '';
+      return `
+        <div class="orden-linea ${sel ? 'selected' : ''}" onclick="selectLinea(${l.id})">
+          <div class="linea-top">
+            ${badge}
+            <span class="linea-nombre">${l.cantidad}x ${l.nombre_articulo}</span>
+            <span class="linea-precio">${fmt(l.subtotal_linea)}</span>
+          </div>
+          ${l.modificadores.map(m => `<div class="linea-mod">└─ ${m.nombre_modificador}${m.precio_extra ? ' +' + fmt(m.precio_extra) : ''}</div>`).join('')}
+          ${sel ? `
+          <div class="linea-controls">
+            <button class="qty-btn" onclick="cambiarCantidad(${l.id},-1,event)">−</button>
+            <span class="qty-num">${l.cantidad}</span>
+            <button class="qty-btn" onclick="cambiarCantidad(${l.id},1,event)">+</button>
+            <button class="qty-btn delete" onclick="eliminarLinea(${l.id},event)">🗑</button>
+          </div>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  const totEl = document.getElementById('orden-totales');
+  if (orden) {
+    totEl.innerHTML = `
+      <div class="total-row"><span>Subtotal</span><span class="total-val">${fmt(orden.subtotal)}</span></div>
+      <div class="total-row"><span>ITBIS 18%</span><span class="total-val">${fmt(orden.impuestos)}</span></div>
+      <div class="total-row"><span>Propina 10%</span><span class="total-val">${fmt(orden.propina)}</span></div>
+      <div class="total-row grand"><span>TOTAL</span><span class="total-val">${fmt(orden.total)}</span></div>
+    `;
+  }
+}
+
+function selectLinea(id) {
+  const linea = state.lineas.find(l => l.id === id);
+  state.lineaSeleccionada = (state.lineaSeleccionada?.id === id) ? null : linea;
+  renderOrden();
+}
+
+function cambiarCantidad(lineaId, delta, e) {
+  e.stopPropagation();
+  const linea = state.lineas.find(l => l.id === lineaId);
+  if (!linea) return;
+  linea.cantidad = Math.max(1, linea.cantidad + delta);
+  linea.subtotal_linea = linea.cantidad * linea.precio_unitario;
+  recalcularOrden();
+  renderOrden();
+}
+
+function eliminarLinea(lineaId, e) {
+  e.stopPropagation();
+  state.lineas = state.lineas.filter(l => l.id !== lineaId);
+  state.lineaSeleccionada = null;
+  recalcularOrden();
+  renderOrden();
+  toast('Artículo eliminado');
+}
+
+function enviarCocina() {
+  const pendientes = state.lineas.filter(l => l.estado === 'pendiente');
+  if (!pendientes.length) { toast('No hay artículos pendientes'); return; }
+  pendientes.forEach(l => { l.estado = 'en_preparacion'; });
+  toast('Enviado a cocina ✓', 'success');
+  renderOrden();
+}
+
+let notaTimer = null;
+function debounceSaveNota(val) {
+  clearTimeout(notaTimer);
+  notaTimer = setTimeout(() => {
+    if (state.orden) state.orden.notas = val;
+  }, 800);
+}
+
+function irCobro() {
+  if (!state.lineas.length) { toast('Agrega artículos antes de cobrar'); return; }
+  loadCobro();
+}
+
+// ═══════════════════════════════════════════════
+//  MODAL MODIFICADORES
+// ═══════════════════════════════════════════════
+function abrirModalMods(art, grupos) {
+  state.modalArticulo = art;
+  state.modalMods = {};
+  grupos.forEach(g => { state.modalMods[g.id] = g; });
+  state.modalSel = {};
+  document.getElementById('modal-art-nombre').textContent = art.nombre + ' — ' + fmt(art.precio);
+  const el = document.getElementById('modal-grupos');
+  el.innerHTML = grupos.map(g => `
+    <div class="grupo-mod">
+      <div class="grupo-nombre">
+        ${g.nombre}
+        ${g.obligatorio ? '<span class="req">*</span>' : ''}
+        <span style="font-weight:400;font-size:11px">(${g.seleccion === 'unica' ? 'Elegir uno' : 'Varios'})</span>
+      </div>
+      <div class="mod-options">
+        ${g.opciones.map(o => `
+          <button class="mod-option" id="opt-${g.id}-${o.id}"
+            onclick="toggleMod(${g.id},${o.id},'${g.seleccion}',event)">
+            ${o.nombre}
+            ${o.precio_extra ? `<span class="mod-extra">+${fmt(o.precio_extra)}</span>` : ''}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+  validarModal();
+  document.getElementById('modal-mods').style.display = 'flex';
+}
+
+function toggleMod(grupoId, opcionId, seleccion, e) {
+  e.stopPropagation();
+  const grupo = state.modalMods[grupoId];
+  if (!state.modalSel[grupoId]) state.modalSel[grupoId] = new Set();
+  const sel = state.modalSel[grupoId];
+  if (seleccion === 'unica') {
+    sel.clear();
+    sel.add(opcionId);
+    grupo.opciones.forEach(o => {
+      const el = document.getElementById('opt-' + grupoId + '-' + o.id);
+      if (el) el.classList.remove('selected');
+    });
+  } else {
+    if (sel.has(opcionId)) sel.delete(opcionId);
+    else sel.add(opcionId);
+  }
+  const el = document.getElementById('opt-' + grupoId + '-' + opcionId);
+  if (el) el.classList.toggle('selected', sel.has(opcionId));
+  validarModal();
+}
+
+function validarModal() {
+  const btn = document.getElementById('btn-agregar-modal');
+  const obligatorios = Object.values(state.modalMods).filter(g => g.obligatorio);
+  const ok = obligatorios.every(g => state.modalSel[g.id]?.size > 0);
+  btn.disabled = !ok;
+}
+
+function cerrarModal() {
+  document.getElementById('modal-mods').style.display = 'none';
+  state.modalArticulo = null;
+  state.modalSel = {};
+}
+
+function confirmarModal() {
+  const art = state.modalArticulo;
+  if (!art) return;
+  const seleccionados = [];
+  Object.entries(state.modalSel).forEach(([grupoId, opIds]) => {
+    const grupo = state.modalMods[grupoId];
+    opIds.forEach(opId => {
+      const op = grupo.opciones.find(o => o.id === opId);
+      if (op) seleccionados.push({ nombre: op.nombre, precio_extra: op.precio_extra });
+    });
+  });
+  cerrarModal();
+  agregarLinea(art, seleccionados);
+}
+
+// ═══════════════════════════════════════════════
+//  SPLIT CUENTA
+// ═══════════════════════════════════════════════
+function toggleSplitMode() {
+  state.splitMode = !state.splitMode;
+  if (!state.splitMode) {
+    state.lineas.forEach(l => { l.cuenta_num = 1; });
+    state.numCuentas = 1;
+  }
+  document.getElementById('btn-split').classList.toggle('active', state.splitMode);
+  renderOrden();
+}
+
+function ciclarCuenta(lineaId, e) {
+  e.stopPropagation();
+  const linea = state.lineas.find(l => l.id === lineaId);
+  if (!linea) return;
+  const next = (linea.cuenta_num || 1) + 1;
+  const MAX = 6;
+  if (next > state.numCuentas && state.numCuentas < MAX) {
+    state.numCuentas = next;
+    linea.cuenta_num = next;
+  } else {
+    linea.cuenta_num = next > state.numCuentas ? 1 : next;
+  }
+  renderOrden();
+}
+
+function getTotalCuenta(n) {
+  const sub = state.lineas.filter(l => (l.cuenta_num || 1) === n)
+    .reduce((s, l) => s + Number(l.subtotal_linea), 0);
+  const imp = Math.round(sub * 0.18);
+  const prop = Math.round(sub * 0.10);
+  return { subtotal: sub, impuestos: imp, propina: prop, total: sub + imp + prop };
+}
+
+function selectCuentaCobro(n) {
+  state.cuentaActivaCobro = n;
+  renderCuentasTabsCobro();
+  renderCobroLeft();
+  renderCobro();
+  const monto = document.getElementById('monto-pago');
+  if (monto) monto.value = getTotalCuenta(n).total;
+}
+
+function renderCuentasTabsCobro() {
+  const el = document.getElementById('cuentas-tabs-cobro');
+  if (!state.splitMode) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.className = 'cuentas-tabs-cobro';
+  el.innerHTML = Array.from({ length: state.numCuentas }, (_, i) => i + 1).map(n => {
+    const { total } = getTotalCuenta(n);
+    const pagada = state.cuentasCobradas.has(n);
+    const activa = n === state.cuentaActivaCobro && !pagada;
+    return `<button class="cuenta-tab-cobro ${activa ? 'active' : ''} ${pagada ? 'pagada' : ''}"
+      onclick="selectCuentaCobro(${n})">
+      ${pagada ? '✓ ' : ''}Cuenta ${n} · ${fmt(total)}
+    </button>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  COBRO
+// ═══════════════════════════════════════════════
+function loadCobro() {
+  state.formasPago = [...DEMO.formasPago];
+  state.formaSeleccionada = null;
+  state.pagos = [];
+  state.cuentaActivaCobro = 1;
+  state.cuentasCobradas = new Set();
+  document.getElementById('cobro-mesa-label').textContent = 'Mesa ' + state.mesaLabel;
+  renderCuentasTabsCobro();
+  renderCobroLeft();
+  renderFormasPago();
+  renderCobro();
+  goTo('cobro');
+  const total = state.splitMode ? getTotalCuenta(1).total : (state.orden?.total ?? 0);
+  document.getElementById('monto-pago').value = total;
+}
+
+function renderCobroLeft() {
+  const linesEl = document.getElementById('cobro-lineas');
+  linesEl.innerHTML = state.lineas.map(l => {
+    const cn = l.cuenta_num || 1;
+    const dim = state.splitMode && cn !== state.cuentaActivaCobro;
+    const badgeCls = cn <= 3 ? 'c' + cn : 'cX';
+    const badge = state.splitMode
+      ? `<span class="cuenta-badge ${badgeCls}" style="cursor:default">C${cn}</span>`
+      : '';
+    return `
+      <div class="cobro-linea ${dim ? 'cobro-linea-dim' : ''}">
+        ${badge}
+        <span class="cl-nombre">${l.cantidad}x ${l.nombre_articulo}</span>
+        <span class="cl-precio">${fmt(l.subtotal_linea)}</span>
+      </div>`;
+  }).join('');
+
+  const totales = state.splitMode
+    ? getTotalCuenta(state.cuentaActivaCobro)
+    : { subtotal: state.orden?.subtotal ?? 0, impuestos: state.orden?.impuestos ?? 0,
+        propina: state.orden?.propina ?? 0, total: state.orden?.total ?? 0 };
+
+  const label = state.splitMode ? `Cuenta ${state.cuentaActivaCobro}` : 'TOTAL';
+  document.getElementById('cobro-totales').innerHTML = `
+    <div class="cobro-total-row"><span>Subtotal</span><span class="cobro-total-val">${fmt(totales.subtotal)}</span></div>
+    <div class="cobro-total-row"><span>ITBIS 18%</span><span class="cobro-total-val">${fmt(totales.impuestos)}</span></div>
+    <div class="cobro-total-row"><span>Propina 10%</span><span class="cobro-total-val">${fmt(totales.propina)}</span></div>
+    <div class="cobro-total-row grand"><span>${label}</span><span class="cobro-total-val">${fmt(totales.total)}</span></div>
+  `;
+}
+
+function renderFormasPago() {
+  const el = document.getElementById('formas-pago-grid');
+  el.innerHTML = state.formasPago.map(f => `
+    <button class="forma-btn ${state.formaSeleccionada?.id === f.id ? 'selected' : ''}"
+      onclick="selectForma(${f.id})">
+      <span class="forma-icono">${f.icono}</span>
+      <span>${f.nombre}</span>
+    </button>
+  `).join('');
+}
+
+function selectForma(id) {
+  state.formaSeleccionada = state.formasPago.find(f => f.id === id) ?? null;
+  renderFormasPago();
+}
+
+function agregarPago() {
+  if (!state.formaSeleccionada) { toast('Selecciona una forma de pago'); return; }
+  const monto = parseFloat(document.getElementById('monto-pago').value);
+  if (!monto || monto <= 0) { toast('Ingresa un monto válido'); return; }
+  state.pagos.push({
+    forma_pago_id: state.formaSeleccionada.id,
+    nombre: state.formaSeleccionada.nombre,
+    monto,
+    cuenta_num: state.cuentaActivaCobro,
+  });
+  renderCobro();
+}
+
+function renderCobro() {
+  const pagosActivos = state.splitMode
+    ? state.pagos.filter(p => p.cuenta_num === state.cuentaActivaCobro)
+    : state.pagos;
+
+  const pagosEl = document.getElementById('pagos-list');
+  pagosEl.innerHTML = pagosActivos.map(p => `
+    <div class="pago-item">
+      <span class="pago-nombre">${p.nombre}</span>
+      <span class="pago-monto">${fmt(p.monto)}</span>
+    </div>
+  `).join('');
+
+  const totalActivo = state.splitMode
+    ? getTotalCuenta(state.cuentaActivaCobro).total
+    : (state.orden?.total ?? 0);
+  const totalPagado = pagosActivos.reduce((s, p) => s + p.monto, 0);
+  const pendiente = Math.max(0, totalActivo - totalPagado);
+  const cambio = Math.max(0, totalPagado - totalActivo);
+
+  const faltanCuentas = state.splitMode
+    ? Array.from({ length: state.numCuentas }, (_, i) => i + 1)
+        .filter(n => !state.cuentasCobradas.has(n)).length
+    : 1;
+  const btnLabel = state.splitMode && faltanCuentas > 1
+    ? `✓ Confirmar Cuenta ${state.cuentaActivaCobro}`
+    : '✅ Confirmar cobro';
+
+  document.getElementById('cobro-resumen').innerHTML = `
+    <div class="resumen-row"><span class="label">Total pagado</span><span class="val">${fmt(totalPagado)}</span></div>
+    <div class="resumen-row"><span class="label">Pendiente</span><span class="val pendiente">${fmt(pendiente)}</span></div>
+    <div class="resumen-row"><span class="label">Cambio</span><span class="val cambio">${fmt(cambio)}</span></div>
+  `;
+
+  const btn = document.getElementById('btn-confirmar');
+  btn.disabled = pendiente > 0;
+  btn.textContent = btnLabel;
+}
+
+function confirmarCobro() {
+  if (state.splitMode) {
+    // Marcar cuenta activa como cobrada
+    state.cuentasCobradas.add(state.cuentaActivaCobro);
+    toast(`Cuenta ${state.cuentaActivaCobro} pagada ✓`, 'success');
+
+    // Buscar siguiente cuenta no cobrada
+    const siguiente = Array.from({ length: state.numCuentas }, (_, i) => i + 1)
+      .find(n => !state.cuentasCobradas.has(n));
+
+    if (siguiente) {
+      selectCuentaCobro(siguiente);
+      return;
+    }
+    // Todas cobradas → finalizar
+  }
+
+  // Cobro normal o split completo
+  const pagosActivos = state.splitMode ? state.pagos : state.pagos;
+  const totalPagado = pagosActivos.reduce((s, p) => s + p.monto, 0);
+  const totalOrden = state.orden?.total ?? 0;
+  const cambio = Math.max(0, totalPagado - totalOrden);
+
+  // Liberar mesa principal y todas las secundarias del grupo
+  state.mesas.forEach(m => {
+    if (m.id === state.mesaId) { m.estado = 'libre'; }
+    if (m.mesa_principal_id === state.mesaId) { m.estado = 'libre'; m.mesa_principal_id = null; }
+  });
+
+  if (cambio > 0) {
+    document.getElementById('cambio-amount').textContent = fmt(cambio);
+    document.getElementById('modal-cambio').style.display = 'flex';
+  } else {
+    finalizarCobro();
+  }
+}
+
+function finalizarCobro() {
+  document.getElementById('modal-cambio').style.display = 'none';
+  toast('Cobro registrado ✓', 'success');
+  setTimeout(() => {
+    state.ordenId = null; state.orden = null; state.lineas = [];
+    state.pagos = []; state.mesaId = null;
+    state.splitMode = false; state.numCuentas = 1;
+    state.cuentaActivaCobro = 1; state.cuentasCobradas = new Set();
+    loadMesas();
+  }, 600);
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+(function init() {
+  const token = localStorage.getItem('pos_token');
+  const user = JSON.parse(localStorage.getItem('pos_user') || 'null');
+  if (token && user) {
+    state.token = token;
+    state.user = user;
+    loadMesas();
+  }
+  // Enter en login
+  document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+})();
+</script>
+</body>
+</html>
