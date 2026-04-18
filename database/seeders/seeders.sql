@@ -208,16 +208,21 @@ ON CONFLICT DO NOTHING;
 -- =============================================================
 
 INSERT INTO usuarios (sucursal_id, nombre, apellido, username, pin, estado) VALUES
-(NULL, 'Administrador', 'Sistema',   'admin',      '1234', 'activo'),
-(NULL, 'Carlos',        'Pérez',     'encargado',  '1234', 'activo'),
-(NULL, 'María',         'López',     'camarero',   '1234', 'activo'),
-(NULL, 'Luis',          'Gómez',     'cocinero',   '1234', 'activo'),
-(NULL, 'Ana',           'Martínez',  'cajero',     '1234', 'activo'),
-(NULL, 'Pedro',         'Ramírez',   'bartender',  '1234', 'activo'),
-(NULL, 'Sofia',         'Torres',    'sofia',      '1234', 'activo'),
-(NULL, 'Diego',         'Herrera',   'diego',      '1234', 'activo'),
-(NULL, 'Laura',         'Castillo',  'laura',      '1234', 'activo'),
-(NULL, 'Roberto',       'Núñez',     'roberto',    '1234', 'activo')
+(NULL, 'Administrador', 'Sistema',   'admin',            '1234',   'activo'),
+(NULL, 'Carlos',        'Pérez',     'encargado',        '1234',   'activo'),
+(NULL, 'María',         'López',     'camarero',         '1234',   'activo'),
+(NULL, 'Luis',          'Gómez',     'cocinero',         '1234',   'activo'),
+(NULL, 'Ana',           'Martínez',  'cajero',           '1234',   'activo'),
+(NULL, 'Pedro',         'Ramírez',   'bartender',        '1234',   'activo'),
+(NULL, 'Sofia',         'Torres',    'sofia',            '1234',   'activo'),
+(NULL, 'Diego',         'Herrera',   'diego',            '1234',   'activo'),
+(NULL, 'Laura',         'Castillo',  'laura',            '1234',   'activo'),
+(NULL, 'Roberto',       'Núñez',     'roberto',          '1234',   'activo'),
+(NULL, 'Angelica',      NULL,        '402-3032355-8',    '402303', 'activo'),
+(NULL, 'Cintian',       NULL,        '224-0068633-7',    '224006', 'activo'),
+(NULL, 'Nicol',         NULL,        '402-0979408-6',    '402097', 'activo'),
+(NULL, 'Sofer',         NULL,        '402-2923548-2',    '402392', 'activo'),
+(NULL, 'Invitado',      NULL,        'invitado',         '199927', 'activo')
 ON CONFLICT (username) DO NOTHING;
 
 

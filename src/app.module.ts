@@ -50,6 +50,7 @@ import { MonedasModule } from './monedas/monedas.module';
 import { ReservacionesModule } from './reservaciones/reservaciones.module';
 import { UsuarioRolModule } from './usuario_rol/usuario_rol.module';
 import { SucursalImpuestosModule } from './sucursal_impuestos/sucursal_impuestos.module';
+import { ReportesModule } from './reportes/reportes.module';
 
 @Module({
   imports: [
@@ -119,6 +120,7 @@ import { SucursalImpuestosModule } from './sucursal_impuestos/sucursal_impuestos
     ReservacionesModule,
     UsuarioRolModule,
     SucursalImpuestosModule,
+    ReportesModule,
   ],
   controllers: [],
   providers: [],
