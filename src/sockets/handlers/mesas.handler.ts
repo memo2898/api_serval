@@ -14,6 +14,16 @@ export class MesasHandler {
       sucursal_id: number;
     };
 
+    // Rechazar si ya hay otro camarero en la mesa (protección server-side)
+    if (rol.toLowerCase() === 'camarero' && this.presenciaService.hayOtroCamarero(data.mesa_id, usuario_id, sucursal_id)) {
+      client.emit('error:evento', {
+        evento_original: 'mesa:usuario_entro',
+        codigo: 'MESA_BLOQUEADA',
+        mensaje: 'Otro camarero ya está atendiendo esta mesa',
+      });
+      return;
+    }
+
     this.presenciaService.registrar(client.id, usuario_id, nombre, rol, sucursal_id, data.mesa_id);
 
     server.to(`sucursal_${sucursal_id}_mesas`).emit('mesa:usuario_entro', {
@@ -23,13 +33,7 @@ export class MesasHandler {
       rol,
       timestamp: new Date().toISOString(),
     });
-
-    // Broadcast del cambio de estado para actualizar el floor plan en todos los clientes
-    server.to(`sucursal_${sucursal_id}_mesas`).emit('mesa:estado_cambio', {
-      mesa_id: data.mesa_id,
-      estado: 'ocupada',
-      ...(data.personas !== undefined ? { personas: data.personas } : {}),
-    });
+    // mesa:estado_cambio 'ocupada' se emite en kds.handler cuando se envía a cocina por primera vez
   }
 
   handleUsuarioSalio(client: Socket, data: { mesa_id: number }, server: Server) {

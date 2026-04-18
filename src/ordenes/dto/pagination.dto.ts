@@ -220,4 +220,14 @@ export class OrdeneFiltersDto extends PaginationDto {
   @IsNumber()
   actualizado_por?: number;
 
+  @ApiPropertyOptional({ example: '2024-01-01 00:00:00', description: 'Rango: fecha_cierre >= valor' })
+  @IsOptional()
+  @IsString()
+  fecha_cierre_desde?: string;
+
+  @ApiPropertyOptional({ example: '2024-01-01 23:59:59', description: 'Rango: fecha_cierre <= valor' })
+  @IsOptional()
+  @IsString()
+  fecha_cierre_hasta?: string;
+
 }

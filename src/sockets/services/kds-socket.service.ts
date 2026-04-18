@@ -164,6 +164,8 @@ export class KdsSocketService {
       payloadCocina: buildPayload('cocina'),
       payloadBarra: buildPayload('barra'),
       sucursal_id,
+      mesa_id: orden.mesa_id ?? null,
+      personas: orden.mesa?.personas ?? undefined,
       confirmacion: {
         orden_id: orden.id,
         lineas_enviadas: allLineasEnviadas,

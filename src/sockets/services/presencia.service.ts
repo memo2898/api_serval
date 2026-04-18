@@ -38,6 +38,16 @@ export class PresenciaService {
     this.presencias.delete(socket_id);
   }
 
+  hayOtroCamarero(mesa_id: number, usuario_id: number, sucursal_id: number): boolean {
+    for (const [, data] of this.presencias) {
+      if (data.sucursal_id !== sucursal_id) continue;
+      if (data.usuario_id === usuario_id) continue;
+      if (data.rol.toLowerCase() !== 'camarero') continue;
+      if (data.mesas.includes(mesa_id)) return true;
+    }
+    return false;
+  }
+
   getAll(sucursal_id: number) {
     const result: Record<number, { usuario_id: number; nombre: string; rol: string }[]> = {};
     for (const [, data] of this.presencias) {

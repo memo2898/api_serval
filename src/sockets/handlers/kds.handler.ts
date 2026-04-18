@@ -28,6 +28,15 @@ export class KdsHandler {
           .emit('kds:nueva_linea', result.payloadBarra);
       }
 
+      // La mesa pasa a 'ocupada' en el primer envío a cocina
+      if (result.mesa_id) {
+        server.to(`sucursal_${sucursal_id}_mesas`).emit('mesa:estado_cambio', {
+          mesa_id: result.mesa_id,
+          estado: 'ocupada',
+          ...(result.personas !== undefined ? { personas: result.personas } : {}),
+        });
+      }
+
       client.emit('orden:lineas_confirmadas', result.confirmacion);
     } catch (e: any) {
       client.emit('error:evento', {

@@ -245,6 +245,12 @@ export class OrdenesService {
     if (filters.fecha_cierre) {
       qb.andWhere('ordene.fecha_cierre = :fecha_cierre', { fecha_cierre: filters.fecha_cierre });
     }
+    if (filters.fecha_cierre_desde) {
+      qb.andWhere('ordene.fecha_cierre >= :fecha_cierre_desde', { fecha_cierre_desde: filters.fecha_cierre_desde });
+    }
+    if (filters.fecha_cierre_hasta) {
+      qb.andWhere('ordene.fecha_cierre <= :fecha_cierre_hasta', { fecha_cierre_hasta: filters.fecha_cierre_hasta });
+    }
     if (filters.agregado_en) {
       qb.andWhere('ordene.agregado_en = :agregado_en', { agregado_en: filters.agregado_en });
     }
