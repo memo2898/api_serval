@@ -6,7 +6,6 @@ import { KdsOrdene } from '../../kds_ordenes/entities/kds_ordene.entity';
 import { Ordene } from '../../ordenes/entities/ordene.entity';
 import { DestinosImpresion } from '../../destinos_impresion/entities/destinos_impresion.entity';
 import { OrdenLineaModificadore } from '../../orden_linea_modificadores/entities/orden_linea_modificadore.entity';
-import { Mesa } from '../../mesas/entities/mesa.entity';
 
 @Injectable()
 export class KdsSocketService {
@@ -21,8 +20,6 @@ export class KdsSocketService {
     private readonly destinoRepo: Repository<DestinosImpresion>,
     @InjectRepository(OrdenLineaModificadore)
     private readonly modificadoresRepo: Repository<OrdenLineaModificadore>,
-    @InjectRepository(Mesa)
-    private readonly mesaRepo: Repository<Mesa>,
   ) {}
 
   async enviarAKds(data: { orden_id: number; linea_ids: number[] }, sucursal_id: number) {
@@ -205,13 +202,64 @@ export class KdsSocketService {
     if (!kds) throw new Error('KDS_NO_ENCONTRADO');
 
     const now = new Date();
-    await this.kdsOrdeneRepo.update(kds_orden_id, { estado: 'listo', tiempo_preparado: now });
-
-    const linea = await this.ordenLineaRepo.findOne({ where: { id: kds.orden_linea_id } });
-    const orden = linea ? await this.ordenRepo.findOne({ where: { id: linea.orden_id } }) : null;
+    const linea = await this.ordenLineaRepo
+      .createQueryBuilder('ol')
+      .leftJoinAndSelect('ol.articulo', 'art')
+      .where('ol.id = :id', { id: kds.orden_linea_id })
+      .getOne();
+    const orden = linea
+      ? await this.ordenRepo
+          .createQueryBuilder('ord')
+          .leftJoinAndSelect('ord.mesa', 'mesa')
+          .where('ord.id = :id', { id: linea.orden_id })
+          .getOne()
+      : null;
 
     let ordenCompleta = false;
+    let batchCompleto = false;
+    let batchArticulos: { nombre: string; cantidad: number }[] = [];
+    let batchOrdenLineaIds: number[] = [];
+
     if (orden) {
+      // Cargar las OTRAS líneas del batch ANTES de actualizar la actual
+      // Esto evita la race condition: solo la última línea en completarse dispara el evento
+      const otrasLineasBatch = await this.kdsOrdeneRepo
+        .createQueryBuilder('k')
+        .leftJoinAndSelect('k.orden_linea', 'ol')
+        .leftJoinAndSelect('ol.articulo', 'art')
+        .where('ol.orden_id = :orden_id', { orden_id: orden.id })
+        .andWhere('k.destino_id = :destino_id', { destino_id: kds.destino_id })
+        .andWhere('k.tiempo_recibido = :tiempo', { tiempo: kds.tiempo_recibido })
+        .andWhere('k.id != :id', { id: kds_orden_id })
+        .getMany();
+
+      const todasOtrasListas = otrasLineasBatch.length === 0 ||
+        otrasLineasBatch.every((k) => k.estado === 'listo');
+
+      // Actualizar el estado de la línea actual
+      await this.kdsOrdeneRepo.update(kds_orden_id, { estado: 'listo', tiempo_preparado: now });
+
+      // Solo es batch completo si esta era la última línea pendiente
+      if (todasOtrasListas) {
+        batchCompleto = true;
+        const todasLineasBatch = [...otrasLineasBatch, kds];
+        batchArticulos = todasLineasBatch
+          .map((k) => ({
+            nombre:   k.id === kds_orden_id ? linea?.articulo?.nombre ?? '' : k.orden_linea?.articulo?.nombre ?? '',
+            cantidad: k.id === kds_orden_id ? linea?.cantidad ?? 1          : k.orden_linea?.cantidad ?? 1,
+          }))
+          .filter((a) => a.nombre);
+
+        const lineaIdsBatch = todasLineasBatch
+          .map((k) => (k.id === kds_orden_id ? kds.orden_linea_id : k.orden_linea?.id))
+          .filter(Boolean) as number[];
+        if (lineaIdsBatch.length) {
+          await this.ordenLineaRepo.update({ id: In(lineaIdsBatch) }, { estado: 'lista' });
+          batchOrdenLineaIds = lineaIdsBatch;
+        }
+      }
+
+      // Verificar si toda la orden está completa
       const todasLineas = await this.ordenLineaRepo.findBy({ orden_id: orden.id as number });
       if (todasLineas.length) {
         const kdsParaOrden = await this.kdsOrdeneRepo.findBy({
@@ -219,13 +267,19 @@ export class KdsSocketService {
         });
         ordenCompleta = kdsParaOrden.length > 0 && kdsParaOrden.every((k) => k.estado === 'listo');
       }
+    } else {
+      await this.kdsOrdeneRepo.update(kds_orden_id, { estado: 'listo', tiempo_preparado: now });
     }
 
     return {
       sucursal_id: orden?.sucursal_id ?? 0,
       orden_id: orden?.id ?? 0,
       mesa_id: orden?.mesa_id ?? null,
+      mesa: orden?.mesa?.nombre ?? `Orden ${orden?.numero_orden ?? ''}`,
       ordenCompleta,
+      batchCompleto,
+      batchArticulos,
+      batchOrdenLineaIds,
       destinoTipo: kds.destino?.tipo ?? '',
       payload: {
         kds_orden_id,
@@ -233,6 +287,95 @@ export class KdsSocketService {
         tiempo_preparado: now.toISOString(),
         estado: 'listo',
       },
+    };
+  }
+
+  async batchLista(kds_orden_ids: number[]) {
+    if (!kds_orden_ids.length) return null;
+
+    const now = new Date();
+
+    // Marcar todos los kds_ordenes del batch como listo en una sola operación
+    await this.kdsOrdeneRepo.update(
+      { id: In(kds_orden_ids) },
+      { estado: 'listo', tiempo_preparado: now },
+    );
+
+    // Tomar datos del primer registro para obtener orden y artículos
+    const kds = await this.kdsOrdeneRepo.findOne({ where: { id: kds_orden_ids[0] } });
+    if (!kds) return null;
+
+    const linea = await this.ordenLineaRepo.findOne({ where: { id: kds.orden_linea_id } });
+    const orden = linea
+      ? await this.ordenRepo
+          .createQueryBuilder('ord')
+          .leftJoinAndSelect('ord.mesa', 'mesa')
+          .where('ord.id = :id', { id: linea.orden_id })
+          .getOne()
+      : null;
+    if (!orden) return null;
+
+    // Cargar todas las líneas del batch con artículos
+    const batchLineas = await this.kdsOrdeneRepo
+      .createQueryBuilder('k')
+      .leftJoinAndSelect('k.orden_linea', 'ol')
+      .leftJoinAndSelect('ol.articulo', 'art')
+      .where('k.id IN (:...ids)', { ids: kds_orden_ids })
+      .getMany();
+
+    const batchArticulos = batchLineas
+      .map((k) => ({ nombre: k.orden_linea?.articulo?.nombre ?? '', cantidad: k.orden_linea?.cantidad ?? 1 }))
+      .filter((a) => a.nombre);
+
+    const batchOrdenLineaIds = batchLineas
+      .map((k) => k.orden_linea?.id)
+      .filter(Boolean) as number[];
+
+    // Marcar orden_lineas como listas
+    if (batchOrdenLineaIds.length) {
+      await this.ordenLineaRepo.update({ id: In(batchOrdenLineaIds) }, { estado: 'lista' });
+    }
+
+    // Verificar si toda la orden está completa
+    const todasLineas = await this.ordenLineaRepo.findBy({ orden_id: orden.id as number });
+    const kdsParaOrden = todasLineas.length
+      ? await this.kdsOrdeneRepo.findBy({ orden_linea_id: In(todasLineas.map((l) => l.id as number)) })
+      : [];
+    const ordenCompleta = kdsParaOrden.length > 0 && kdsParaOrden.every((k) => k.estado === 'listo');
+
+    return {
+      sucursal_id:     orden.sucursal_id,
+      orden_id:        orden.id as number,
+      mesa_id:         orden.mesa_id ?? null,
+      mesa:            orden.mesa?.nombre ?? `Orden ${orden.numero_orden}`,
+      usuario_id:      orden.usuario_id ?? null,
+      batchArticulos,
+      batchOrdenLineaIds,
+      ordenCompleta,
+      destinoTipo:     kds.destino?.tipo ?? '',
+      payloads:        batchLineas.map((k) => ({
+        kds_orden_id:    k.id,
+        orden_linea_id:  k.orden_linea?.id,
+        tiempo_preparado: now.toISOString(),
+        estado: 'listo',
+      })),
+    };
+  }
+
+  async marcarLineasEntregadas(orden_linea_ids: number[]) {
+    if (!orden_linea_ids.length) return;
+    await this.ordenLineaRepo.update(
+      { id: In(orden_linea_ids) },
+      { estado: 'entregada' },
+    );
+    // Devolver orden_id y sucursal_id para emitir el evento a las mesas
+    const linea = await this.ordenLineaRepo.findOne({ where: { id: orden_linea_ids[0] } });
+    const orden = linea ? await this.ordenRepo.findOne({ where: { id: linea.orden_id } }) : null;
+    return {
+      sucursal_id: orden?.sucursal_id ?? 0,
+      orden_id:    orden?.id ?? 0,
+      mesa_id:     orden?.mesa_id ?? null,
+      orden_linea_ids,
     };
   }
 

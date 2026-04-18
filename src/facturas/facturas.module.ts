@@ -8,6 +8,6 @@ import { Factura } from './entities/factura.entity';
   imports: [TypeOrmModule.forFeature([Factura])],
   controllers: [FacturasController],
   providers: [FacturasService],
-
+  exports: [FacturasService],
 })
 export class FacturasModule {}

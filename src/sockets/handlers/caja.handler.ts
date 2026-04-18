@@ -11,10 +11,8 @@ export class CajaHandler {
     sucursal_id: number,
     payload: {
       orden_id: number;
-      forma_pago: string;
-      monto: number;
-      referencia: string | null;
-      saldo_pendiente: number;
+      mesa_id: number | null;
+      monto_total: number;
       estado_orden: string;
     },
   ) {

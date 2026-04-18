@@ -11,12 +11,25 @@ import { UpdateOrdeneDto } from './dto/update-ordene.dto';
 import { OrdeneFiltersDto } from './dto/pagination.dto';
 import { Ordene } from './entities/ordene.entity';
 import { PaginationResponse } from './interfaces/pagination-response.interface';
+import { OrdenPagosService } from '../orden_pagos/orden_pagos.service';
+import { CajaHandler } from '../sockets/handlers/caja.handler';
+import { FacturasService } from '../facturas/facturas.service';
+
+export interface PagoInput {
+  forma_pago_id: number;
+  monto: number;
+  cuenta_num?: number;
+  referencia?: string;
+}
 
 @Injectable()
 export class OrdenesService {
   constructor(
     @InjectRepository(Ordene)
     private ordenesRepository: Repository<Ordene>,
+    private readonly ordenPagosService: OrdenPagosService,
+    private readonly cajaHandler: CajaHandler,
+    private readonly facturasService: FacturasService,
   ) {}
 
   private getErrorMessage(error: unknown): string {
@@ -117,8 +130,38 @@ export class OrdenesService {
       if (!existing) {
         throw new NotFoundException(`Ordene con ID ${id} no encontrado`);
       }
+
+      // Una orden por_cobrar no puede ser degradada a un estado anterior.
+      // Si el mesero agrega más artículos y los envía a cocina, eso no debe
+      // sobreescribir el estado de cobro — la orden sigue esperando pago.
+      const estadosFinalCobro = ['por_cobrar', 'cobrada'];
+      if (
+        dto.estado &&
+        estadosFinalCobro.includes(existing.estado) &&
+        !estadosFinalCobro.includes(dto.estado)
+      ) {
+        delete (dto as any).estado;
+      }
+
       await this.ordenesRepository.update(id, dto);
-      return await this.ordenesRepository.findOne({ where: { id } });
+      const updated = await this.ordenesRepository.findOne({ where: { id } });
+
+      if (dto.estado === 'por_cobrar') {
+        this.cajaHandler.emitOrdenListaCobrar(existing.sucursal_id, {
+          orden_id:        id,
+          mesa:            (existing as any).mesa?.nombre ?? `Mesa ${existing.mesa_id}`,
+          mesa_id:         existing.mesa_id,
+          total:           Number(existing.total ?? 0),
+          subtotal:        Number(existing.subtotal ?? 0),
+          impuestos:       Number(existing.impuestos_total ?? 0),
+          descuento_total: Number(existing.descuento_total ?? 0),
+          numero_orden:    existing.numero_orden,
+          tipo_servicio:   existing.tipo_servicio,
+          timestamp:       new Date().toISOString(),
+        });
+      }
+
+      return updated;
     } catch (error: unknown) {
       if (error instanceof NotFoundException) throw error;
       throw new HttpException(
@@ -213,6 +256,65 @@ export class OrdenesService {
     if (filters.actualizado_por !== undefined) {
       qb.andWhere('ordene.actualizado_por = :actualizado_por', { actualizado_por: filters.actualizado_por });
     }
+  }
+
+  // ─── Cobrar orden ──────────────────────────────────────────────────────────
+
+  async cobrar(id: number, pagos: PagoInput[]) {
+    const orden = await this.ordenesRepository.findOne({ where: { id } });
+    if (!orden) throw new NotFoundException(`Orden ${id} no encontrada`);
+
+    if (!pagos?.length) {
+      throw new HttpException('Se requiere al menos un pago', HttpStatus.BAD_REQUEST);
+    }
+
+    const ahora = new Date();
+
+    // 1. Guardar cada pago en orden_pagos
+    await Promise.all(
+      pagos.map(p =>
+        this.ordenPagosService.create({
+          orden_id:      id,
+          forma_pago_id: p.forma_pago_id,
+          monto:         p.monto,
+          referencia:    p.referencia,
+          agregado_en:   ahora.toISOString(),
+        }),
+      ),
+    );
+
+    // 2. Cerrar la orden
+    await this.ordenesRepository.update(id, {
+      estado:      'cobrada',
+      fecha_cierre: ahora,
+    });
+
+    // 3. Crear registro en facturas
+    const montoTotal    = pagos.reduce((s, p) => s + Number(p.monto), 0);
+    const subtotal      = Number(orden.subtotal ?? 0);
+    const impuestosVal  = Math.round((montoTotal - subtotal) * 100) / 100;
+    const numeroFactura = `F-${orden.sucursal_id}-${orden.numero_orden ?? id}-${ahora.getTime()}`;
+
+    await this.facturasService.create({
+      orden_id:        id,
+      numero_factura:  numeroFactura,
+      tipo:            'consumo',
+      subtotal,
+      impuestos:       impuestosVal > 0 ? impuestosVal : undefined,
+      total:           montoTotal,
+      anulada:         false,
+      agregado_en:     ahora.toISOString(),
+    });
+
+    // 4. Notificar vía socket a mesas y caja
+    this.cajaHandler.emitPagoRegistrado(orden.sucursal_id, {
+      orden_id:       id,
+      mesa_id:        orden.mesa_id,
+      monto_total:    pagos.reduce((s, p) => s + Number(p.monto), 0),
+      estado_orden:   'cobrada',
+    });
+
+    return { mensaje: 'Cobro registrado', orden_id: id, pagos_guardados: pagos.length };
   }
 
   private applySorting(qb: SelectQueryBuilder<Ordene>, sort?: string) {

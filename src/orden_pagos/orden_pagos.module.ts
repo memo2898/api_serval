@@ -8,6 +8,6 @@ import { OrdenPago } from './entities/orden_pago.entity';
   imports: [TypeOrmModule.forFeature([OrdenPago])],
   controllers: [OrdenPagosController],
   providers: [OrdenPagosService],
-
+  exports:   [OrdenPagosService],
 })
 export class OrdenPagosModule {}

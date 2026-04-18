@@ -463,7 +463,7 @@ CREATE TABLE ordenes (
                     CHECK (tipo_servicio IN ('mesa', 'barra', 'take_away', 'delivery')),
     -- estado operativo de la orden (no es auditoría)
     estado          VARCHAR(20) DEFAULT 'abierta'
-                    CHECK (estado IN ('abierta', 'en_preparacion', 'lista', 'cobrada', 'cancelada', 'anulada', 'eliminado')),
+                    CHECK (estado IN ('abierta', 'en_preparacion', 'lista', 'por_cobrar', 'cobrada', 'cancelada', 'anulada', 'eliminado')),
     numero_orden    INT,
     descuento_total DECIMAL(10,2) DEFAULT 0,
     subtotal        DECIMAL(10,2) DEFAULT 0,

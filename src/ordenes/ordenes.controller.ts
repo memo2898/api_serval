@@ -10,11 +10,27 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
-import { OrdenesService } from './ordenes.service';
+import { IsNumber, IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { OrdenesService, PagoInput } from './ordenes.service';
 import { OrdenLineasService } from '../orden_lineas/orden_lineas.service';
 import { CreateOrdeneDto } from './dto/create-ordene.dto';
 import { UpdateOrdeneDto } from './dto/update-ordene.dto';
 import { OrdeneFiltersDto } from './dto/pagination.dto';
+
+class PagoInputDto implements PagoInput {
+  @IsNumber() forma_pago_id: number;
+  @IsNumber() monto: number;
+  @IsOptional() @IsNumber() cuenta_num?: number;
+  @IsOptional() @IsString() referencia?: string;
+}
+
+class CobrarOrdenDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PagoInputDto)
+  pagos: PagoInputDto[];
+}
 
 @ApiTags('Ordenes')
 @Controller('ordenes')
@@ -45,6 +61,18 @@ export class OrdenesController {
   @ApiQuery({ name: 'sort',  required: false, type: String, description: 'Campo:dirección (ej: id:ASC)' })
   findAll(@Query() filters: OrdeneFiltersDto) {
     return this.ordenesService.findAll(filters);
+  }
+
+  @Post(':id/cobrar')
+  @ApiOperation({ summary: 'Registrar cobro de una orden' })
+  @ApiResponse({ status: 201, description: 'Cobro registrado exitosamente.' })
+  @ApiResponse({ status: 404, description: 'Orden no encontrada.' })
+  @ApiParam({ name: 'id', type: 'number', description: 'ID de la orden' })
+  cobrar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CobrarOrdenDto,
+  ) {
+    return this.ordenesService.cobrar(id, dto.pagos);
   }
 
   @Get(':id/lineas')

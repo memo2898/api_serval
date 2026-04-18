@@ -9,7 +9,6 @@ import { KdsOrdene } from '../kds_ordenes/entities/kds_ordene.entity';
 import { Ordene } from '../ordenes/entities/ordene.entity';
 import { DestinosImpresion } from '../destinos_impresion/entities/destinos_impresion.entity';
 import { OrdenLineaModificadore } from '../orden_linea_modificadores/entities/orden_linea_modificadore.entity';
-import { Mesa } from '../mesas/entities/mesa.entity';
 
 // Servicios
 import { PresenciaService } from './services/presencia.service';
@@ -35,7 +34,6 @@ import { SocketsDocsController } from './sockets-docs.controller';
       Ordene,
       DestinosImpresion,
       OrdenLineaModificadore,
-      Mesa,
     ]),
   ],
   controllers: [SocketsDocsController],

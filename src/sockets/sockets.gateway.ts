@@ -144,4 +144,14 @@ export class SocketsGateway implements OnGatewayInit, OnGatewayConnection, OnGat
   async onLineaLista(client: Socket, data: { kds_orden_id: number }) {
     await this.kdsHandler.handleLineaLista(client, data, this.server);
   }
+
+  @SubscribeMessage('kds:batch_lista')
+  async onBatchLista(client: Socket, data: { kds_orden_ids: number[] }) {
+    await this.kdsHandler.handleBatchLista(client, data, this.server);
+  }
+
+  @SubscribeMessage('kds:lineas_entregadas')
+  async onLineasEntregadas(client: Socket, data: { orden_linea_ids: number[] }) {
+    await this.kdsHandler.handleLineasEntregadas(client, data, this.server);
+  }
 }
