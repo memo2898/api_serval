@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsBoolean, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsBoolean, IsDateString, IsIn } from 'class-validator';
 
 export class CreateFacturaDto {
   @ApiProperty({ example: 12345 })
@@ -17,9 +17,9 @@ export class CreateFacturaDto {
   @IsString()
   numero_factura: string;
 
-  @ApiProperty({ example: "put some text here" })
+  @ApiProperty({ example: 'ticket', enum: ['ticket', 'factura', 'consumo'] })
   @IsOptional()
-  @IsString()
+  @IsIn(['ticket', 'factura', 'consumo'])
   tipo?: string;
 
   @ApiProperty({ example: 12345 })

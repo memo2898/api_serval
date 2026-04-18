@@ -80,7 +80,8 @@ export class OrdenesService {
 
       const { page, limit, sort, ...filterParams } = filters;
 
-      const qb = this.ordenesRepository.createQueryBuilder('ordene');
+      const qb = this.ordenesRepository.createQueryBuilder('ordene')
+        .leftJoinAndSelect('ordene.mesa', 'mesa');
       this.applyFilters(qb, filterParams);
       this.applySorting(qb, sort);
 
@@ -261,60 +262,68 @@ export class OrdenesService {
   // ─── Cobrar orden ──────────────────────────────────────────────────────────
 
   async cobrar(id: number, pagos: PagoInput[]) {
-    const orden = await this.ordenesRepository.findOne({ where: { id } });
-    if (!orden) throw new NotFoundException(`Orden ${id} no encontrada`);
+    try {
+      const orden = await this.ordenesRepository.findOne({ where: { id } });
+      if (!orden) throw new NotFoundException(`Orden ${id} no encontrada`);
 
-    if (!pagos?.length) {
-      throw new HttpException('Se requiere al menos un pago', HttpStatus.BAD_REQUEST);
+      if (!pagos?.length) {
+        throw new HttpException('Se requiere al menos un pago', HttpStatus.BAD_REQUEST);
+      }
+
+      const ahora = new Date();
+
+      // 1. Guardar cada pago en orden_pagos
+      await Promise.all(
+        pagos.map(p =>
+          this.ordenPagosService.create({
+            orden_id:      id,
+            forma_pago_id: p.forma_pago_id,
+            monto:         p.monto,
+            referencia:    p.referencia,
+            agregado_en:   ahora.toISOString(),
+          }),
+        ),
+      );
+
+      // 2. Cerrar la orden
+      await this.ordenesRepository.update(id, {
+        estado:      'cobrada',
+        fecha_cierre: ahora,
+      });
+
+      // 3. Crear registro en facturas
+      const montoTotal    = pagos.reduce((s, p) => s + Number(p.monto), 0);
+      const subtotal      = Number(orden.subtotal ?? 0);
+      const impuestosVal  = Math.round((montoTotal - subtotal) * 100) / 100;
+      const numeroFactura = `F-${orden.sucursal_id}-${orden.numero_orden ?? id}-${ahora.getTime()}`;
+
+      await this.facturasService.create({
+        orden_id:        id,
+        numero_factura:  numeroFactura,
+        tipo:            'ticket',
+        subtotal,
+        impuestos:       impuestosVal > 0 ? impuestosVal : undefined,
+        total:           montoTotal,
+        anulada:         false,
+        agregado_en:     ahora.toISOString(),
+      });
+
+      // 4. Notificar vía socket a mesas y caja
+      this.cajaHandler.emitPagoRegistrado(orden.sucursal_id, {
+        orden_id:       id,
+        mesa_id:        orden.mesa_id,
+        monto_total:    montoTotal,
+        estado_orden:   'cobrada',
+      });
+
+      return { mensaje: 'Cobro registrado', orden_id: id, pagos_guardados: pagos.length };
+    } catch (error: unknown) {
+      if (error instanceof NotFoundException || error instanceof HttpException) throw error;
+      throw new HttpException(
+        `Error al cobrar orden ${id}: ${this.getErrorMessage(error)}`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
-
-    const ahora = new Date();
-
-    // 1. Guardar cada pago en orden_pagos
-    await Promise.all(
-      pagos.map(p =>
-        this.ordenPagosService.create({
-          orden_id:      id,
-          forma_pago_id: p.forma_pago_id,
-          monto:         p.monto,
-          referencia:    p.referencia,
-          agregado_en:   ahora.toISOString(),
-        }),
-      ),
-    );
-
-    // 2. Cerrar la orden
-    await this.ordenesRepository.update(id, {
-      estado:      'cobrada',
-      fecha_cierre: ahora,
-    });
-
-    // 3. Crear registro en facturas
-    const montoTotal    = pagos.reduce((s, p) => s + Number(p.monto), 0);
-    const subtotal      = Number(orden.subtotal ?? 0);
-    const impuestosVal  = Math.round((montoTotal - subtotal) * 100) / 100;
-    const numeroFactura = `F-${orden.sucursal_id}-${orden.numero_orden ?? id}-${ahora.getTime()}`;
-
-    await this.facturasService.create({
-      orden_id:        id,
-      numero_factura:  numeroFactura,
-      tipo:            'consumo',
-      subtotal,
-      impuestos:       impuestosVal > 0 ? impuestosVal : undefined,
-      total:           montoTotal,
-      anulada:         false,
-      agregado_en:     ahora.toISOString(),
-    });
-
-    // 4. Notificar vía socket a mesas y caja
-    this.cajaHandler.emitPagoRegistrado(orden.sucursal_id, {
-      orden_id:       id,
-      mesa_id:        orden.mesa_id,
-      monto_total:    pagos.reduce((s, p) => s + Number(p.monto), 0),
-      estado_orden:   'cobrada',
-    });
-
-    return { mensaje: 'Cobro registrado', orden_id: id, pagos_guardados: pagos.length };
   }
 
   private applySorting(qb: SelectQueryBuilder<Ordene>, sort?: string) {

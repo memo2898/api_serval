@@ -51,7 +51,8 @@ export class SucursalImpuestosService {
 
       const { page, limit, sort, ...filterParams } = filters;
 
-      const qb = this.sucursalImpuestosRepository.createQueryBuilder('si');
+      const qb = this.sucursalImpuestosRepository.createQueryBuilder('si')
+        .leftJoinAndSelect('si.impuesto', 'impuesto');
       this.applyFilters(qb, filterParams);
       this.applySorting(qb, sort);
 

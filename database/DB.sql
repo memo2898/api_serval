@@ -527,7 +527,7 @@ CREATE TABLE facturas (
     orden_id        INT NOT NULL REFERENCES ordenes(id),
     cliente_id      INT REFERENCES clientes(id),
     numero_factura  VARCHAR(50) NOT NULL,
-    tipo            VARCHAR(20) DEFAULT 'ticket' CHECK (tipo IN ('ticket', 'factura')),
+    tipo            VARCHAR(20) DEFAULT 'ticket' CHECK (tipo IN ('ticket', 'factura', 'consumo')),
     subtotal        DECIMAL(10,2) NOT NULL,
     impuestos       DECIMAL(10,2) DEFAULT 0,
     total           DECIMAL(10,2) NOT NULL,
@@ -670,5 +670,4 @@ CREATE INDEX idx_reservaciones_mesa     ON reservaciones(mesa_id);
 -- PARCHES / MIGRACIONES
 -- =============================================================
 
--- 2026-04-17: columna personas en mesas (nº de comensales en tiempo real)
-ALTER TABLE mesas ADD COLUMN IF NOT EXISTS personas INT DEFAULT NULL;
+-- (vacío — migraciones aplicadas ya están incorporadas al schema)
