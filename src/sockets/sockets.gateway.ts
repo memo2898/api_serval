@@ -128,6 +128,17 @@ export class SocketsGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     client.to(`sucursal_${sucursal_id}_mesas`).emit('orden:linea_sincronizada', data as any);
   }
 
+  /**
+   * Relay de split de cuentas: el camarero notifica que cambió la distribución de
+   * cuentas en una orden que ya está "por_cobrar". Se reenvía a la sala de caja
+   * para que actualice el ticket en cola en tiempo real.
+   */
+  @SubscribeMessage('orden:split_actualizado')
+  onSplitActualizado(client: Socket, data: unknown) {
+    const { sucursal_id } = client.data as { sucursal_id: number };
+    this.server.to(`sucursal_${sucursal_id}_caja`).emit('orden:split_actualizado', data as any);
+  }
+
   // ─── KDS ─────────────────────────────────────────────────────────────────
 
   @SubscribeMessage('orden:enviar_a_cocina')

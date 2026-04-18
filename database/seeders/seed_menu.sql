@@ -7,19 +7,23 @@
 
 -- =============================================================
 -- FAMILIAS
--- sucursal_id NULL → aplica a todas las sucursales
 -- =============================================================
 
-INSERT INTO familias (nombre, color, icono, orden_visual, destino_impresion) VALUES
-('Cócteles',              '#E91E63', 'fa-martini-glass',   1, 'barra'),
-('Cervezas',              '#FF9800', 'fa-beer-mug-empty',  2, 'barra'),
-('Aguas',                 '#03A9F4', 'fa-droplet',         3, 'barra'),
-('Cafés y Frappés',       '#795548', 'fa-mug-hot',         4, 'barra'),
-('Refrescos',             '#F44336', 'fa-bottle-water',    5, 'barra'),
-('Jugos y Sabores',       '#4CAF50', 'fa-lemon',           6, 'barra'),
-('Entradas',              '#FF5722', 'fa-plate-wheat',     7, 'cocina'),
-('Platos Fuertes',        '#9C27B0', 'fa-utensils',        8, 'cocina'),
-('Postres',               '#FFC107', 'fa-ice-cream',       9, 'cocina');
+INSERT INTO familias (sucursal_id, nombre, color, icono, orden_visual, destino_impresion)
+SELECT
+    (SELECT id FROM sucursales WHERE nombre = 'Central'),
+    nombre, color, icono, orden_visual, destino_impresion
+FROM (VALUES
+    ('Cócteles',        '#E91E63', 'fa-martini-glass',   1, 'barra'),
+    ('Cervezas',        '#FF9800', 'fa-beer-mug-empty',  2, 'barra'),
+    ('Aguas',           '#03A9F4', 'fa-droplet',         3, 'barra'),
+    ('Cafés y Frappés', '#795548', 'fa-mug-hot',         4, 'barra'),
+    ('Refrescos',       '#F44336', 'fa-bottle-water',    5, 'barra'),
+    ('Jugos y Sabores', '#4CAF50', 'fa-lemon',           6, 'barra'),
+    ('Entradas',        '#FF5722', 'fa-plate-wheat',     7, 'cocina'),
+    ('Platos Fuertes',  '#9C27B0', 'fa-utensils',        8, 'cocina'),
+    ('Postres',         '#FFC107', 'fa-ice-cream',       9, 'cocina')
+) AS t(nombre, color, icono, orden_visual, destino_impresion);
 
 
 -- =============================================================
@@ -161,3 +165,45 @@ INSERT INTO articulos (familia_id, nombre, precio_venta) VALUES
 ((SELECT id FROM familias WHERE nombre = 'Postres'), 'Mousse de Oreo',     250.00),
 ((SELECT id FROM familias WHERE nombre = 'Postres'), 'Cheesecake',         350.00),
 ((SELECT id FROM familias WHERE nombre = 'Postres'), 'Flan',               250.00);
+
+
+-- =============================================================
+-- DESTINOS DE IMPRESIÓN
+-- Un registro por tipo (barra/cocina) por cada sucursal.
+-- El KDS usa estos IDs para filtrar comandas.
+-- =============================================================
+
+INSERT INTO destinos_impresion (sucursal_id, nombre, tipo, ip_impresora, estado)
+SELECT id, 'Barra',  'barra',  NULL, 'activo' FROM sucursales WHERE estado = 'activo'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO destinos_impresion (sucursal_id, nombre, tipo, ip_impresora, estado)
+SELECT id, 'Cocina', 'cocina', NULL, 'activo' FROM sucursales WHERE estado = 'activo'
+ON CONFLICT DO NOTHING;
+
+
+-- =============================================================
+-- ZONAS Y MESAS
+-- =============================================================
+
+INSERT INTO zonas (sucursal_id, nombre, orden_visual, estado)
+SELECT id, 'Bar',     1, 'activo' FROM sucursales WHERE nombre = 'Central';
+
+INSERT INTO zonas (sucursal_id, nombre, orden_visual, estado)
+SELECT id, 'Terraza', 2, 'activo' FROM sucursales WHERE nombre = 'Central';
+
+-- Mesas del Bar
+INSERT INTO mesas (zona_id, nombre, capacidad, estado) VALUES
+((SELECT id FROM zonas WHERE nombre = 'Bar'), 'Mesa 1',  4, 'libre'),
+((SELECT id FROM zonas WHERE nombre = 'Bar'), 'Mesa 2',  2, 'libre'),
+((SELECT id FROM zonas WHERE nombre = 'Bar'), 'Mesa 3',  2, 'libre'),
+((SELECT id FROM zonas WHERE nombre = 'Bar'), 'Mesa 4',  6, 'libre');
+
+-- Mesas de la Terraza
+INSERT INTO mesas (zona_id, nombre, capacidad, estado) VALUES
+((SELECT id FROM zonas WHERE nombre = 'Terraza'), 'Mesa 5',  6, 'libre'),
+((SELECT id FROM zonas WHERE nombre = 'Terraza'), 'Mesa 6',  2, 'libre'),
+((SELECT id FROM zonas WHERE nombre = 'Terraza'), 'Mesa 7',  6, 'libre'),
+((SELECT id FROM zonas WHERE nombre = 'Terraza'), 'Mesa 8',  6, 'libre'),
+((SELECT id FROM zonas WHERE nombre = 'Terraza'), 'Mesa 9',  6, 'libre'),
+((SELECT id FROM zonas WHERE nombre = 'Terraza'), 'Mesa 10', 4, 'libre');

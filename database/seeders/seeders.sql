@@ -256,23 +256,23 @@ INSERT INTO usuarios (sucursal_id, nombre, apellido, username, pin, estado) VALU
 -- id=1  Un solo rol
 (NULL, 'Administrador', 'Sistema',   'admin',      '1234', 'activo'),
 -- id=2  Un solo rol
-(NULL, 'Carlos',        'Pérez',     'encargado',  '2345', 'activo'),
+(NULL, 'Carlos',        'Pérez',     'encargado',  '1234', 'activo'),
 -- id=3  Un solo rol
-(NULL, 'María',         'López',     'camarero',   '3456', 'activo'),
+(NULL, 'María',         'López',     'camarero',   '1234', 'activo'),
 -- id=4  Un solo rol
-(NULL, 'Luis',          'Gómez',     'cocinero',   '4567', 'activo'),
+(NULL, 'Luis',          'Gómez',     'cocinero',   '1234', 'activo'),
 -- id=5  Un solo rol
-(NULL, 'Ana',           'Martínez',  'cajero',     '5678', 'activo'),
+(NULL, 'Ana',           'Martínez',  'cajero',     '1234', 'activo'),
 -- id=6  Un solo rol
-(NULL, 'Pedro',         'Ramírez',   'bartender',  '6789', 'activo'),
+(NULL, 'Pedro',         'Ramírez',   'bartender',  '1234', 'activo'),
 -- id=7  Camarero que también cobra (Camarero + Cajero)
-(NULL, 'Sofia',         'Torres',    'sofia',      '7890', 'activo'),
+(NULL, 'Sofia',         'Torres',    'sofia',      '1234', 'activo'),
 -- id=8  Bartender que también cocina (Bartender + Cocinero)
-(NULL, 'Diego',         'Herrera',   'diego',      '8901', 'activo'),
+(NULL, 'Diego',         'Herrera',   'diego',      '1234', 'activo'),
 -- id=9  Encargado de turno que cubre caja (Encargado + Cajero)
-(NULL, 'Laura',         'Castillo',  'laura',      '9012', 'activo'),
+(NULL, 'Laura',         'Castillo',  'laura',      '1234', 'activo'),
 -- id=10 Dueño con acceso total (Administrador + Encargado)
-(NULL, 'Roberto',       'Núñez',     'roberto',    '0123', 'activo');
+(NULL, 'Roberto',       'Núñez',     'roberto',    '1234', 'activo');
 
 -- =============================================================
 -- ASIGNACIÓN DE ROLES POR USUARIO
@@ -295,6 +295,29 @@ INSERT INTO usuario_rol (usuario_id, rol_id) VALUES
 (9,  5),  -- laura      → Cajero
 (10, 1),  -- roberto    → Administrador
 (10, 2);  -- roberto    → Encargado
+
+
+-- =============================================================
+-- EMPRESA Y SUCURSAL
+-- =============================================================
+
+INSERT INTO empresas (nombre, tipo_documento_id, numero_documento, estado, agregado_por) VALUES
+('Chuy''s Mexican Grill',
+ (SELECT id FROM tipo_documentos WHERE tipo = 'RNC'),
+ '000000',
+ 'activo',
+ 1);
+
+INSERT INTO sucursales (empresa_id, nombre, estado, agregado_por) VALUES
+((SELECT id FROM empresas WHERE nombre = 'Chuy''s Mexican Grill'),
+ 'Central',
+ 'activo',
+ 1);
+
+-- Asignar todos los usuarios a la sucursal Central
+UPDATE usuarios
+SET sucursal_id = (SELECT id FROM sucursales WHERE nombre = 'Central')
+WHERE sucursal_id IS NULL;
 
 
 -- =============================================================
