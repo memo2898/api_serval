@@ -5,12 +5,12 @@ import { Type } from 'class-transformer';
 export class ReporteVentasDto {
   @ApiProperty({ example: '2025-01-01', description: 'Fecha inicio del rango (YYYY-MM-DD)' })
   @IsNotEmpty()
-  @IsDateString()
+  @IsDateString({ strict: true })
   fecha_inicio: string;
 
   @ApiProperty({ example: '2025-01-31', description: 'Fecha fin del rango (YYYY-MM-DD)' })
   @IsNotEmpty()
-  @IsDateString()
+  @IsDateString({ strict: true })
   fecha_fin: string;
 
   @ApiPropertyOptional({ example: 1, description: 'Filtrar por sucursal' })
