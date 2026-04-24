@@ -25,6 +25,13 @@ class PagoInputDto implements PagoInput {
   @IsOptional() @IsString() referencia?: string;
 }
 
+class ImpuestoDesgloseDto {
+  @IsString()  nombre: string;
+  @IsNumber()  porcentaje: number;
+  @IsNumber()  base: number;
+  @IsNumber()  monto: number;
+}
+
 class CobrarOrdenDto {
   @IsArray()
   @ValidateNested({ each: true })
@@ -33,7 +40,9 @@ class CobrarOrdenDto {
 
   @IsOptional()
   @IsArray()
-  impuestos_desglose?: object[];
+  @ValidateNested({ each: true })
+  @Type(() => ImpuestoDesgloseDto)
+  impuestos_desglose?: ImpuestoDesgloseDto[];
 }
 
 @ApiTags('Ordenes')

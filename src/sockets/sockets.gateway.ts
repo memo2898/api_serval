@@ -118,6 +118,27 @@ export class SocketsGateway implements OnGatewayInit, OnGatewayConnection, OnGat
   }
 
   /**
+   * Broadcast cuando un camarero libera manualmente una mesa (orden vacía/cancelada).
+   * Notifica a todos los camareros de la sucursal que la mesa y sus unidas quedaron libres.
+   */
+  @SubscribeMessage('mesa:liberada')
+  onMesaLiberada(
+    client: Socket,
+    data: { mesa_id: number; mesas_unidas_ids?: number[] },
+  ) {
+    const { sucursal_id } = client.data as { sucursal_id: number };
+    const room = `sucursal_${sucursal_id}_mesas`;
+    const mesasALiberar = [data.mesa_id, ...(data.mesas_unidas_ids ?? [])];
+    for (const mesa_id of mesasALiberar) {
+      this.server.to(room).emit('mesa:estado_cambio', {
+        mesa_id,
+        estado: 'libre',
+        personas: 0,
+      });
+    }
+  }
+
+  /**
    * Broadcast cuando se mueve una orden completa a otra mesa: notifica a todos
    * que la mesa origen quedó libre y la destino pasó a ocupada.
    */
