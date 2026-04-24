@@ -42,6 +42,10 @@ export class Factura {
 
   @Column({ type: "integer" })
   actualizado_por: number | null;
+
+  @Column({ type: "jsonb", default: [] })
+  impuestos_desglose: object[];
+
   @ManyToOne(() => Orden, { eager: true })
   @JoinColumn({ name: 'orden_id' })
   orden: Orden;

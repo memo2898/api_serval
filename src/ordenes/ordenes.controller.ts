@@ -30,6 +30,10 @@ class CobrarOrdenDto {
   @ValidateNested({ each: true })
   @Type(() => PagoInputDto)
   pagos: PagoInputDto[];
+
+  @IsOptional()
+  @IsArray()
+  impuestos_desglose?: object[];
 }
 
 @ApiTags('Ordenes')
@@ -72,7 +76,7 @@ export class OrdenesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CobrarOrdenDto,
   ) {
-    return this.ordenesService.cobrar(id, dto.pagos);
+    return this.ordenesService.cobrar(id, dto.pagos, dto.impuestos_desglose);
   }
 
   @Get(':id/lineas')

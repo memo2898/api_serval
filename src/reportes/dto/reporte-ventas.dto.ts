@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
+import { IsDateString, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ReporteVentasDto {
@@ -18,4 +18,10 @@ export class ReporteVentasDto {
   @Type(() => Number)
   @IsNumber()
   sucursal_id?: number;
+
+  @ApiPropertyOptional({ example: 'cocina', enum: ['cocina', 'barra'], description: 'Filtrar por área de destino' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['cocina', 'barra'])
+  area?: 'cocina' | 'barra';
 }

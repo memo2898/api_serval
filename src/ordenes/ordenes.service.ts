@@ -267,7 +267,7 @@ export class OrdenesService {
 
   // ─── Cobrar orden ──────────────────────────────────────────────────────────
 
-  async cobrar(id: number, pagos: PagoInput[]) {
+  async cobrar(id: number, pagos: PagoInput[], impuestosDesglose?: object[]) {
     try {
       const orden = await this.ordenesRepository.findOne({ where: { id } });
       if (!orden) throw new NotFoundException(`Orden ${id} no encontrada`);
@@ -304,14 +304,15 @@ export class OrdenesService {
       const numeroFactura = `F-${orden.sucursal_id}-${orden.numero_orden ?? id}-${ahora.getTime()}`;
 
       await this.facturasService.create({
-        orden_id:        id,
-        numero_factura:  numeroFactura,
-        tipo:            'ticket',
+        orden_id:           id,
+        numero_factura:     numeroFactura,
+        tipo:               'ticket',
         subtotal,
-        impuestos:       impuestosVal > 0 ? impuestosVal : undefined,
-        total:           montoTotal,
-        anulada:         false,
-        agregado_en:     ahora.toISOString(),
+        impuestos:          impuestosVal > 0 ? impuestosVal : undefined,
+        total:              montoTotal,
+        anulada:            false,
+        agregado_en:        ahora.toISOString(),
+        impuestos_desglose: impuestosDesglose ?? [],
       });
 
       // 4. Notificar vía socket a mesas y caja

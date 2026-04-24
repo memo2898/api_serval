@@ -118,6 +118,29 @@ export class SocketsGateway implements OnGatewayInit, OnGatewayConnection, OnGat
   }
 
   /**
+   * Broadcast cuando se mueve una orden completa a otra mesa: notifica a todos
+   * que la mesa origen quedó libre y la destino pasó a ocupada.
+   */
+  @SubscribeMessage('mesa:orden_movida')
+  onOrdenMovida(
+    client: Socket,
+    data: { source_mesa_id: number; target_mesa_id: number; personas: number },
+  ) {
+    const { sucursal_id } = client.data as { sucursal_id: number };
+    const room = `sucursal_${sucursal_id}_mesas`;
+    this.server.to(room).emit('mesa:estado_cambio', {
+      mesa_id: data.source_mesa_id,
+      estado: 'libre',
+      personas: 0,
+    });
+    this.server.to(room).emit('mesa:estado_cambio', {
+      mesa_id: data.target_mesa_id,
+      estado: 'ocupada',
+      personas: data.personas,
+    });
+  }
+
+  /**
    * Relay de sincronización de líneas: rebroadcast a los demás clientes del mismo
    * floor-plan (excluyendo al emisor) para que vean en tiempo real los artículos
    * agregados/modificados/eliminados por otro camarero en la misma mesa.

@@ -523,19 +523,20 @@ CREATE TABLE orden_pagos (
 -- =============================================================
 
 CREATE TABLE facturas (
-    id              SERIAL PRIMARY KEY,
-    orden_id        INT NOT NULL REFERENCES ordenes(id),
-    cliente_id      INT REFERENCES clientes(id),
-    numero_factura  VARCHAR(50) NOT NULL,
-    tipo            VARCHAR(20) DEFAULT 'ticket' CHECK (tipo IN ('ticket', 'factura', 'consumo')),
-    subtotal        DECIMAL(10,2) NOT NULL,
-    impuestos       DECIMAL(10,2) DEFAULT 0,
-    total           DECIMAL(10,2) NOT NULL,
-    anulada         BOOLEAN DEFAULT FALSE,
-    agregado_en     TIMESTAMP DEFAULT NOW(),
-    agregado_por    INT REFERENCES usuarios(id),
-    actualizado_en  TIMESTAMP DEFAULT NOW(),
-    actualizado_por INT REFERENCES usuarios(id)
+    id                  SERIAL PRIMARY KEY,
+    orden_id            INT NOT NULL REFERENCES ordenes(id),
+    cliente_id          INT REFERENCES clientes(id),
+    numero_factura      VARCHAR(50) NOT NULL,
+    tipo                VARCHAR(20) DEFAULT 'ticket' CHECK (tipo IN ('ticket', 'factura', 'consumo')),
+    subtotal            DECIMAL(10,2) NOT NULL,
+    impuestos           DECIMAL(10,2) DEFAULT 0,
+    total               DECIMAL(10,2) NOT NULL,
+    anulada             BOOLEAN DEFAULT FALSE,
+    impuestos_desglose  JSONB DEFAULT '[]'::jsonb,
+    agregado_en         TIMESTAMP DEFAULT NOW(),
+    agregado_por        INT REFERENCES usuarios(id),
+    actualizado_en      TIMESTAMP DEFAULT NOW(),
+    actualizado_por     INT REFERENCES usuarios(id)
 );
 
 -- =============================================================

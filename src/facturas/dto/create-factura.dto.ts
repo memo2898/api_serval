@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsBoolean, IsDateString, IsIn } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsBoolean, IsDateString, IsIn, IsArray } from 'class-validator';
 
 export class CreateFacturaDto {
   @ApiProperty({ example: 12345 })
@@ -61,4 +61,9 @@ export class CreateFacturaDto {
   @IsOptional()
   @IsNumber()
   actualizado_por?: number;
+
+  @ApiProperty({ example: [] })
+  @IsOptional()
+  @IsArray()
+  impuestos_desglose?: object[];
 }

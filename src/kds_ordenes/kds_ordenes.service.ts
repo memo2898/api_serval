@@ -207,6 +207,13 @@ export class KdsOrdenesService {
     }
   }
 
+  async cancelarPorLinea(lineaId: number): Promise<void> {
+    await this.kdsOrdenesRepository.update(
+      { orden_linea_id: lineaId },
+      { estado: 'cancelada' },
+    );
+  }
+
   private applyFilters(
     qb: SelectQueryBuilder<KdsOrdene>,
     filters: Partial<KdsOrdeneFiltersDto>,

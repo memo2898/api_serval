@@ -12,6 +12,7 @@ import { OrdenLineaFiltersDto } from './dto/pagination.dto';
 import { OrdenLinea } from './entities/orden_linea.entity';
 import { OrdenLineaModificadore } from '../orden_linea_modificadores/entities/orden_linea_modificadore.entity';
 import { PaginationResponse } from './interfaces/pagination-response.interface';
+import { KdsOrdenesService } from '../kds_ordenes/kds_ordenes.service';
 
 @Injectable()
 export class OrdenLineasService {
@@ -20,6 +21,7 @@ export class OrdenLineasService {
     private ordenLineasRepository: Repository<OrdenLinea>,
     @InjectRepository(OrdenLineaModificadore)
     private modificadoresRepository: Repository<OrdenLineaModificadore>,
+    private kdsOrdenesService: KdsOrdenesService,
   ) {}
 
   private getErrorMessage(error: unknown): string {
@@ -159,6 +161,9 @@ export class OrdenLineasService {
       const existing = await this.ordenLineasRepository.findOne({ where: { id } });
       if (!existing) {
         throw new NotFoundException(`OrdenLinea con ID ${id} no encontrado`);
+      }
+      if (existing.enviado_a_cocina) {
+        await this.kdsOrdenesService.cancelarPorLinea(id);
       }
       await this.ordenLineasRepository.delete(id);
       return { message: `OrdenLinea con ID ${id} eliminado correctamente` };

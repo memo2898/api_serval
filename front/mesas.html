@@ -393,6 +393,24 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
         <button class="btn-split" id="btn-split" onclick="toggleSplitMode()" style="flex:1">÷ Dividir cuenta</button>
         <button class="btn-split" onclick="abrirModalUnirTPV()" style="flex:1">＋ Unir mesa</button>
       </div>
+      <div style="padding: 0 12px 12px;">
+        <button class="btn-split" onclick="abrirModalMoverMesa()" style="width:100%">↔ Mover mesa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal mover mesa -->
+<div id="modal-mover-mesa" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Mover mesa</div>
+      <div class="modal-subtitle">Selecciona la mesa destino para <strong id="mover-mesa-origen">—</strong></div>
+    </div>
+    <div id="mover-mesa-body" style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:14px;"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="cerrarModalMoverMesa()">Cancelar</button>
+      <button class="btn-add" id="btn-confirmar-mover" onclick="confirmarMoverMesa()" disabled>Mover orden</button>
     </div>
   </div>
 </div>
@@ -818,6 +836,95 @@ function confirmarUnirTPV() {
   cerrarModalUnirTPV();
   toast(state.unirTPVSelected.length + ' mesa(s) unidas ✓', 'success');
   state.unirTPVSelected = [];
+}
+
+// ═══════════════════════════════════════════════
+//  MOVER MESA (transferir orden a otra mesa)
+// ═══════════════════════════════════════════════
+let moverMesaDestinoId = null;
+
+function abrirModalMoverMesa() {
+  const mesaOrigen = state.mesas.find(m => m.id === state.mesaId);
+  document.getElementById('mover-mesa-origen').textContent = 'Mesa ' + (mesaOrigen?.nombre ?? '—');
+  moverMesaDestinoId = null;
+  document.getElementById('btn-confirmar-mover').disabled = true;
+  renderMoverMesaOpciones();
+  document.getElementById('modal-mover-mesa').style.display = 'flex';
+}
+
+function cerrarModalMoverMesa() {
+  document.getElementById('modal-mover-mesa').style.display = 'none';
+  moverMesaDestinoId = null;
+}
+
+function renderMoverMesaOpciones() {
+  const body = document.getElementById('mover-mesa-body');
+  // Mesas libres de todas las zonas (excepto la actual y las unidas)
+  const libres = state.mesas.filter(m =>
+    m.estado === 'libre' && m.id !== state.mesaId && !m.mesa_principal_id
+  );
+
+  if (!libres.length) {
+    body.innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">No hay mesas libres disponibles</p>';
+    return;
+  }
+
+  // Agrupar por zona
+  const grupos = {};
+  libres.forEach(m => {
+    const zonaId = m.zona_id;
+    if (!grupos[zonaId]) grupos[zonaId] = [];
+    grupos[zonaId].push(m);
+  });
+
+  body.innerHTML = Object.entries(grupos).map(([zonaId, mesas]) => {
+    const zona = state.zonas.find(z => z.id === Number(zonaId));
+    const zonaNombre = zona?.nombre ?? 'Zona ' + zonaId;
+    const btns = mesas.map(m => `
+      <button class="unir-mesa-btn ${moverMesaDestinoId === m.id ? 'selected' : ''}"
+        onclick="seleccionarMesaDestino(${m.id})">
+        <span class="unir-mesa-nombre">${m.nombre}</span>
+        <span class="unir-mesa-sub">${m.capacidad} pers.</span>
+      </button>
+    `).join('');
+    return `
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">${zonaNombre}</div>
+        <div class="unir-mesas-grid" style="padding:0">${btns}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function seleccionarMesaDestino(mesaId) {
+  moverMesaDestinoId = mesaId;
+  document.getElementById('btn-confirmar-mover').disabled = false;
+  renderMoverMesaOpciones();
+}
+
+function confirmarMoverMesa() {
+  if (!moverMesaDestinoId) return;
+  const mesaOrigen = state.mesas.find(m => m.id === state.mesaId);
+  const mesaDestino = state.mesas.find(m => m.id === moverMesaDestinoId);
+  if (!mesaOrigen || !mesaDestino) return;
+
+  // Transferir estado de mesa
+  mesaDestino.estado = mesaOrigen.estado;
+  mesaDestino.personas = mesaOrigen.personas;
+  mesaOrigen.estado = 'libre';
+  mesaOrigen.personas = 0;
+
+  // Actualizar orden en estado
+  if (state.orden) state.orden.mesa_id = mesaDestino.id;
+  state.mesaId = mesaDestino.id;
+  state.mesaLabel = mesaDestino.nombre;
+  // Actualizar zona activa al de la mesa destino
+  state.zonaActiva = mesaDestino.zona_id;
+
+  cerrarModalMoverMesa();
+  document.getElementById('tpv-mesa-label').textContent = 'Mesa ' + state.mesaLabel;
+  renderOrden();
+  toast('Orden movida a ' + mesaDestino.nombre + ' ✓', 'success');
 }
 
 // ═══════════════════════════════════════════════

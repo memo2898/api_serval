@@ -9,6 +9,6 @@ import { OrdenLineaModificadore } from '../orden_linea_modificadores/entities/or
   imports: [TypeOrmModule.forFeature([KdsOrdene, OrdenLineaModificadore])],
   controllers: [KdsOrdenesController],
   providers: [KdsOrdenesService],
-
+  exports: [KdsOrdenesService],
 })
 export class KdsOrdenesModule {}
